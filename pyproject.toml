@@ -17,11 +17,10 @@ qiskit = "^2.2.1"
 pytest = "^8.4.2"
 qiskit-aer = "^0.17.2"
 
+[tool.poetry.scripts]
+cli = "abcapstonefa25team1.main:init_app('cli')"
+gui = "abcapstonefa25team1.main:init_app('gui')"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.scripts]
-app-cli = "abcapstonefa25team1.cli:main"
-app-gui = "abcapstonefa25team1.gui:main"
