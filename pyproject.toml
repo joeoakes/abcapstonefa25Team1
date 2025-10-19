@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "abcapstonefa25Team1"
+version = "0.1.0"
+description = ""
+authors = ["Robert Jajko <rmj5606@psu.edu>",
+  "Avik Bhuiyan <apb6590@psu.edu>",
+  "Kamila Anarkulova <kfa5397@psu.edu>",
+  "Valerie Malicka <vqm5328@psu.edu>",
+  "Huy Quoc Nguyen <gqn5149@psu.edu>",
+  "Aaron Joseph Polite <ajp6992@psu.edu>",
+  "Shakhzoda Ziyadullaeva <sbz5314@psu.edu>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+qiskit = "^2.2.1"
+pytest = "^8.4.2"
+qiskit-aer = "^0.17.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
