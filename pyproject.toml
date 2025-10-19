@@ -21,3 +21,7 @@ qiskit-aer = "^0.17.2"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+app-cli = "abcapstonefa25team1.cli:main"
+app-gui = "abcapstonefa25team1.gui:main"
