@@ -31,6 +31,11 @@ abcapstonefa25team1/
 
 This project uses **Poetry** for dependency management and environment isolation.
 
+NOTE: **Make sure Poetry is installed**
+   ```bash
+   pip install poetry
+   ```
+
 1. **Clone the repository**
    ```bash
    git clone https://github.com/yourusername/abcapstonefa25team1.git
