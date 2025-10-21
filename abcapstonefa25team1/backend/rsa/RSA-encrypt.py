@@ -84,3 +84,11 @@ def decrypt(cipher_blocks, private_key):
         chunk = m_int.to_bytes(k, byteorder='big')
         message_bytes.extend(chunk)
     return message_bytes.decode('utf-8')
+
+# Project: TEAM 1 
+# Purpose Details: Encryption Function for the RSA team assignment
+# Course: IST440W
+# Author: VALERIE MALICKA
+# Date Developed: 10/18/2025
+# Last Date Changed: 10/21/2025
+# Revision: Some revisions needed to be done. Using the code that was givven to us in class to help with understanding of RSA.
