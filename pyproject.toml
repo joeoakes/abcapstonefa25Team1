@@ -6,7 +6,7 @@ authors = ["Robert Jajko <rmj5606@psu.edu>",
   "Avik Bhuiyan <apb6590@psu.edu>",
   "Kamila Anarkulova <kfa5397@psu.edu>",
   "Valerie Malicka <vqm5328@psu.edu>",
-  "Huy Quoc Nguyen <gqn5149@psu.edu>",
+  "Huy Quoc Nguyen <hqn5149@psu.edu>",
   "Aaron Joseph Polite <ajp6992@psu.edu>",
   "Shakhzoda Ziyadullaeva <sbz5314@psu.edu>"]
 readme = "README.md"
@@ -24,3 +24,8 @@ gui = "abcapstonefa25team1.main:init_app('gui')"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "pytest (>=8.4.2,<9.0.0)"
+]
