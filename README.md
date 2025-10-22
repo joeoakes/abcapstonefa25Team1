@@ -62,5 +62,9 @@ poetry run cli
 ```bash
 poetry run gui
 ```
+### Run the pytest
+```bash
+poetry run pytest -v
+```
 
 ---
