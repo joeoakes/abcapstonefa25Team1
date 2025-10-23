@@ -13,9 +13,9 @@ def modinv(a, m):
         x0, x1 = x1 - q * x0, x0
     return x1 % m0
 
-def is_prime(n):
+def is_prime(n):                   # test whether n is prime
     if n <= 1:
-        return False
+        return False                               # this is a basic trial-devision primality test that checks divisibillity by every integer from 2 up 
     for i in range(2, int(n**0.5) + 1):
         if n % i == 0:
             return False
