@@ -4,10 +4,30 @@
 # Author: AVIK BHUIYAN
 # Date Developed: 10/18/2025
 # Last Date Changed: 10/23/2025
-# Revision: Setting up CLI structure for testing
+# Revision: Setting up CLI structure and added same method
 
 import argparse
-from testMethods import greet
+import ast
+import sys
+import os
+
+# Try package imports first; if running file directly, add project root to sys.path and retry.
+try:
+    from abcapstonefa25team1.backend.quantum.classical_shors import shor_classical
+    from abcapstonefa25team1.backend.utils.read_write import read_file
+    from abcapstonefa25team1.backend.rsa.RSA_encrypt import decrypt as rsa_decrypt
+except Exception:
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    from abcapstonefa25team1.backend.quantum.classical_shors import shor_classical
+    from abcapstonefa25team1.backend.utils.read_write import read_file
+    from abcapstonefa25team1.backend.rsa.RSA_encrypt import decrypt as rsa_decrypt
+
+# Sample method
+def greet(name):
+    print(f"Hello, {name}!")
+
 # Define a simple function with an argument (PLACEHOLDER UNTIL CODE IS READY)
 
 # Set up a command-line interface
@@ -17,7 +37,11 @@ def main():
 
     # Parse the command-line arguments
     args = parser.parse_args()
+    fileText = read_file(args.file)
+    print(fileText)
 
+    shorsOutput = shor_classical(int(fileText))
+    print(f"Shor's Algorithm Output: {shorsOutput}")
     # Call the function with the command-line value
     greet(args.file)
 
