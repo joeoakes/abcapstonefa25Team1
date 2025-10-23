@@ -15,18 +15,12 @@ import os
 try:
     from abcapstonefa25team1.backend.quantum.classical_shors import shor_classical
     from abcapstonefa25team1.backend.utils.read_write import read_file
-    from abcapstonefa25team1.backend.rsa.RSA_encrypt import decrypt as rsa_decrypt
 except Exception:
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
     from abcapstonefa25team1.backend.quantum.classical_shors import shor_classical
     from abcapstonefa25team1.backend.utils.read_write import read_file
-    from abcapstonefa25team1.backend.rsa.RSA_encrypt import decrypt as rsa_decrypt
-
-# Sample method
-def greet(name):
-    print(f"Hello, {name}!")
 
 # Define a simple function with an argument (PLACEHOLDER UNTIL CODE IS READY)
 
@@ -42,8 +36,6 @@ def main():
 
     shorsOutput = shor_classical(int(fileText))
     print(f"Shor's Algorithm Output: {shorsOutput}")
-    # Call the function with the command-line value
-    greet(args.file)
 
 if __name__ == "__main__":
     main()
