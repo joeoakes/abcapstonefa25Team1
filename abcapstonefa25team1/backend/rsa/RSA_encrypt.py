@@ -2,12 +2,12 @@ import random
 
 def gcd(a, b):
     while b != 0:
-        a, b = b, a % b
-    return a
+        a, b = b, a % b    # gcd computes the greatest common divisor of a and b. 
+    return a               # it repeatedly replaces (a,b) with (b,a % b) until b becomes 0 then a is the GCD.
 
 def modinv(a, m):
-    m0, x0, x1 = m, 0, 1
-    while a > 1:
+    m0, x0, x1 = m, 0, 1     # computes the modularr multiplicative inverse of a modulo m - an x such that (a*x) % m == 1
+    while a > 1:            
         q = a // m
         a, m = m, a % m
         x0, x1 = x1 - q * x0, x0
