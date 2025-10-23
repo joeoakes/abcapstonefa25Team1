@@ -39,8 +39,6 @@ class App(tk.Tk):
         self.inputText.grid(row=4, column=0, sticky="nsew")
         self._addScrollbar(self.inputText, leftPane, row=4)
 
-        # (REMOVED) File Picker from leftPane so it can sit on the same row as action buttons
-
         # Middle Arrow
         midPane = ttk.Frame(main)
         midPane.grid(row=0, column=1, rowspan=2, sticky="ns")
@@ -80,7 +78,7 @@ class App(tk.Tk):
         ttk.Button(actions, text="Encrypt", command=self.handleEncrypt).grid(row=0, column=3, padx=(16, 8))
         ttk.Button(actions, text="Decrypt", command=self.handleDecrypt).grid(row=0, column=4)
 
-        # Subtle note for prototype (put it on a second, thin row to avoid crowding)
+        # Version Control
         ttk.Label(actions, text="Prototype UI", foreground="#666").grid(row=1, column=0, columnspan=5, sticky="w", pady=(6, 0))
 
         self._applyStyle()
