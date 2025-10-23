@@ -58,7 +58,7 @@ class App(tk.Tk):
         self.outputText.grid(row=1, column=0, sticky="nsew")
         self._addScrollbar(self.outputText, rightPane, row=1)
 
-        # Action Row: file picker + Encrypt/Decrypt on the SAME ROW
+        # Action Row: file picker + Encrypt/Decrypt
         actions = ttk.Frame(container)
         actions.grid(row=2, column=0, sticky="ew", pady=(12, 0))
         # columns: 0 = label, 1 = entry (expands), 2 = browse, 3 = encrypt, 4 = decrypt
