@@ -68,6 +68,7 @@ def shors_algorithm(N, a=None, verbose=True):
         print("\nStarting quantum period finding...")
 
     r = quantum_period_finding(N, a, verbose)
+    print(r)
 
     if r is None:
         if verbose:
@@ -456,7 +457,7 @@ if __name__ == "__main__":
     print("=" * 70)
 
     # Test with small numbers
-    test_numbers = [15, 21]
+    test_numbers = [255]
 
     for N in test_numbers:
         print("\n")
