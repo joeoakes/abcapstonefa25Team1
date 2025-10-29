@@ -10,7 +10,12 @@
 import logging
 import argparse
 from abcapstonefa25team1.backend.rsa import RSA_encrypt
-from abcapstonefa25team1.backend.utils.read_write import read_file, write_file
+from abcapstonefa25team1.backend.utils.read_write import (
+    read_encrypted_binary,
+    read_file,
+    write_encrypted_binary,
+    write_file,
+)
 from abcapstonefa25team1.backend.quantum import classical_shors, quantum_shors
 
 
@@ -45,7 +50,7 @@ def main():
         "--output", "-o", required=False, type=str, help="Output file name"
     )
     encrypt_parser.add_argument(
-        "--keys", "-k", nargs=2, type=int, help="Public key: e n"
+        "--keys", "-k", nargs=2, type=int, default=[7, 143], help="Public key: e n"
     )
 
     # Decrypt subcommand
@@ -58,10 +63,18 @@ def main():
         "--classical", "-c", action="store_true", help="Use classical Shor’s algorithm"
     )
     decrypt_parser.add_argument(
-        "--exponent", "-e", type=int, required=True, help="Public exponent e"
+        "--exponent",
+        "-e",
+        type=int,
+        default=7,
+        help="Public exponent e",
     )
     decrypt_parser.add_argument(
-        "--modulus", "-m", type=int, required=True, help="Public modulus n"
+        "--modulus",
+        "-m",
+        type=int,
+        default=143,
+        help="Public modulus n",
     )
 
     args = parser.parse_args()
@@ -77,42 +90,31 @@ def main():
 
     rsa = RSA_encrypt.RSA()
 
-    # Encrypt
+    # ---- Encrypt ----
     if args.command == "encrypt":
-        plaintext = read_file(args.INPUT)
-        if plaintext is None:
-            logger.error("Failed to read input file.")
-            return
-
         if args.keys:
             e, n = args.keys
             logger.info(f"Encrypting using public key (e={e}, n={n})")
-            ciphertext = rsa.encrypt(plaintext, (e, n))
         else:
             public_key, private_key, _ = rsa.generate_keys()
             e, n = public_key
             logger.info(f"Generated public key: {public_key}")
             logger.info(f"Generated private key: {private_key}")
-            ciphertext = rsa.encrypt(plaintext, public_key)
 
-        output_file = args.output or "encrypted.txt"
-        write_file(output_file, ciphertext)
-        logger.info(f"Encrypted output saved to '{output_file}'")
+        plaintext = read_file(args.INPUT)
+        if plaintext is None:
+            print("Failed to read input file.")
+            return
 
-    # Decrypt
+        ciphertext = rsa.encrypt(plaintext, (e, n))
+        if args.output:
+            write_encrypted_binary(args.output, ciphertext, n)
+            print(f"Encrypted output saved to {args.output}")
+        else:
+            print(ciphertext)
+
+    # ---- Decrypt ----
     elif args.command == "decrypt":
-        # Read encrypted integers (space-separated)
-        file_text = read_file(args.INPUT)
-        if file_text is None:
-            logger.error("Failed to read input file.")
-            return
-
-        try:
-            encrypted_blocks = [int(x) for x in file_text.split()]
-        except ValueError:
-            logger.error("Ciphertext file must contain space-separated integers.")
-            return
-
         N = args.modulus
         e = args.exponent
 
@@ -121,26 +123,37 @@ def main():
             shors = classical_shors.Classical_Shors()
             factors = shors.shors_classical(N)
             if not factors:
-                logger.error("Classical Shor’s failed to factor N.")
+                print("Classical Shor’s failed to factor N.")
                 return
             p, q = factors
             logger.info(f"Classical Shor’s found p={p}, q={q}")
         else:
             shors = quantum_shors.Quantum_Shors()
-            p, q = shors.shors_quantum(N)
+            factors = shors.run_shors_algorithm(N, 15)
+            if not factors:
+                print("Quantum Shor's failed to factor N.")
+                return
+            p, q = factors
             logger.info(f"Quantum Shor’s found p={p}, q={q}")
 
+        # Derive private key from Shor's factors
         priv = rsa.derive_private_key_from_factors(p, q, e)
         if priv is None:
             logger.error("Failed to derive private key.")
             return
-
         d, n = priv[1], priv[0]
-        plaintext = rsa.decrypt(encrypted_blocks, (d, n))
 
-        output_file = args.output or "decrypted.txt"
-        write_file(output_file, plaintext)
-        logger.info(f"Decrypted output saved to '{output_file}'")
+        encrypted_blocks = read_encrypted_binary(args.INPUT, n)
+        if encrypted_blocks is None:
+            print("Failed to read input file.")
+            return
+
+        plaintext = rsa.decrypt(encrypted_blocks, (d, n))
+        if args.output:
+            write_file(args.output, plaintext)
+            print(f"Decrypted output saved to {args.output}")
+        else:
+            print(plaintext)
 
 
 if __name__ == "__main__":

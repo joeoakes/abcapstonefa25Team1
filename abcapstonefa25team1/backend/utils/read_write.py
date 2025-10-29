@@ -32,25 +32,12 @@ def write_file(file_path, data):
     # Write(save) text content to a file.
     try:
         # Open file in write mode with UTF-8 encoding
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(
-                " ".join(str(n) for n in data)
-            )  # Write the provided data to the file
-        print(f"File saved successfully as '{file_path}'")
+        with open(file_path, "w", encoding="ascii") as file:
+            file.writelines(data)  # Write the provided data to the file
 
     except Exception as e:
         # Handle unexpected write errors
         print(f"Error writing file:{e}")
-
-
-def read_encrypted_file(file_path):
-    """Read a file of space-separated encrypted integers and return as list[int]."""
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            return [int(x) for x in f.read().split()]
-    except Exception as e:
-        print(f"Error reading encrypted file: {e}")
-        return []
 
 
 def write_encrypted_binary(file_path, cipher_blocks, n):

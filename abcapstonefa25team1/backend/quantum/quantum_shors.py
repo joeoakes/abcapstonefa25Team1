@@ -5,8 +5,7 @@
 # Date Developed: 10/22/25
 # Last Date Changed: 10/22/25
 # Revision: 0.1.0
-from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, transpile
-
+from qiskit import QuantumCircuit, QuantumRegister, transpile
 from qiskit_aer import AerSimulator
 from qiskit.circuit.library import QFT
 import math
@@ -20,7 +19,7 @@ class Quantum_Shors:
         self.logger = logging.getLogger("sred_cli.quantum_shors.Quantum_Shors")
         self.logger.debug("Creating an instance of logger for Shor's Quantum")
 
-    def shors_quantum(self, N, a=None):
+    def shors_quantum(self, N: int, a=None):
         """
         Main implementation of Shor's algorithm
 
@@ -66,30 +65,28 @@ class Quantum_Shors:
             self.logger.debug(f"Lucky! gcd({a}, {N}) = {g}")
             return (g, N // g)
 
-            # Step 3: Quantum period finding
-
-            self.logger.debug("\nStarting quantum period finding...")
+        # Step 3: Quantum period finding
+        self.logger.debug("\nStarting quantum period finding...")
 
         r = self.quantum_period_finding(N, a)
         self.logger.debug(r)
 
         if r is None:
-            self.logger.debug(f"Period finding failed")
+            self.logger.debug("Period finding failed")
             return None
 
         if r % 2 != 0:
-            self.logger.debug(f"Period is odd (r = {r}), trying different 'a'")
+            self.logger.debug("Period is odd (r = {r}), trying different 'a'")
             return None
 
-            # Step 4: Use period to find factors
-
-            self.logger.debug(f"\nFound period r = {r}")
-            self.logger.debug(f"Verifying: {a}^{r} mod {N} = {pow(a, r, N)}")
+        # Step 4: Use period to find factors
+        self.logger.debug(f"\nFound period r = {r}")
+        self.logger.debug(f"Verifying: {a}^{r} mod {N} = {pow(a, r, N)}")
 
         # Check if a^(r/2) ≡ -1 (mod N)
         x = pow(a, r // 2, N)
         if x == N - 1:
-            self.logger.debug(f"a^(r/2) ≡ -1 (mod N), trying different 'a'")
+            self.logger.debug("a^(r/2) ≡ -1 (mod N), trying different 'a'")
             return None
 
         # Compute potential factors
@@ -108,7 +105,7 @@ class Quantum_Shors:
             self.logger.debug(f"\n✓ Success! Factors: {factor2} × {N // factor2} = {N}")
             return (factor2, N // factor2)
 
-            self.logger.debug("Failed to find non-trivial factors")
+        self.logger.debug("Failed to find non-trivial factors")
         return None
 
     def is_prime(self, n):
@@ -140,7 +137,7 @@ class Quantum_Shors:
         n_count = max(8, 2 * math.ceil(math.log2(N)))  # Counting qubits (at least 8)
 
         self.logger.debug(f"Using {n_count} counting qubits")
-        self.logger.debug(f"Building quantum circuit...")
+        self.logger.debug("Building quantum circuit...")
 
         # Create the quantum circuit
         qc = self.create_shor_circuit(N, a, n_count)
@@ -157,7 +154,7 @@ class Quantum_Shors:
         # Transpile the circuit to decompose into basic gates
 
         self.logger.debug("Transpiling circuit...")
-        transpiled_qc = self.transpile(qc, simulator, optimization_level=2)
+        transpiled_qc = transpile(qc, simulator, optimization_level=2)
 
         self.logger.debug(f"Transpiled depth: {transpiled_qc.depth()}")
         self.logger.debug("Running simulation...")
@@ -167,7 +164,7 @@ class Quantum_Shors:
 
         # Show top 10 measurements
         sorted_counts = sorted(counts.items(), key=lambda x: x[1], reverse=True)
-        self.logger.debug(f"\nTop measurement results:")
+        self.logger.debug("\nTop measurement results:")
         for bitstring, count in sorted_counts[:10]:
             measured_value = int(bitstring, 2)
             self.logger.debug(
@@ -196,7 +193,7 @@ class Quantum_Shors:
                     candidates[r] = count
 
         if candidates:
-            self.logger.debug(f"\nPeriod candidates:")
+            self.logger.debug("\nPeriod candidates:")
             for r, count in sorted(
                 candidates.items(), key=lambda x: x[1], reverse=True
             )[:5]:
@@ -415,7 +412,7 @@ class Quantum_Shors:
             if bits1[i] == 0:
                 qc.x(target_register[i])
 
-    def run_shors_algorithm(self, N, max_attempts=10, verbose=True):
+    def run_shors_algorithm(self, N, max_attempts=10):
         """
         Run Shor's algorithm with multiple attempts if needed
 
@@ -428,12 +425,12 @@ class Quantum_Shors:
             Tuple of factors if successful
         """
 
-        self.logger.debug(f"=" * 70)
-        self.logger.debug(f"Attempting to factor N = {N}")
-        self.logger.debug(f"=" * 70)
+        self.logger.debug("=" * 70)
+        self.logger.debug("Attempting to factor N = {N}")
+        self.logger.debug("=" * 70)
 
         for attempt in range(max_attempts):
-            if verbose and attempt > 0:
+            if attempt > 0:
                 self.logger.debug(f"\n--- Attempt {attempt + 1} ---")
 
             result = self.shors_quantum(N)
