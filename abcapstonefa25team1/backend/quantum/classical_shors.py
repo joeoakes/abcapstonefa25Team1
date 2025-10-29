@@ -1,4 +1,4 @@
-# Project:
+# Project: PSU Abington Fall 2025 Capstone
 # Purpose Details: Classical implementation of Shor's algorithm
 # Course: CMPSC 488
 # Author: Rob Jajko
@@ -10,13 +10,11 @@ import random
 import math
 from typing import Optional, Tuple
 
-shors_logger = logging.getLogger("sred_cli.auxiliary")
-
 
 class Classical_Shors:
     def __init__(self):
         self.logger = logging.getLogger("sred_cli.classical_shors.Classical_Shors")
-        self.logger.debug("Creating an instance of Auxiliary for Shor's Classical")
+        self.logger.debug("Creating an instance of logger for Shor's Classical")
 
     def shors_classical(self, N: int, tries: int = 10) -> Optional[Tuple[int, int]]:
         """
@@ -29,14 +27,14 @@ class Classical_Shors:
         if N <= 3:
             return None
         # perfect power check
-        pp = self.is_power(N)
+        pp = self._is_power(N)
         if pp is not None:
             base, k = pp
             self.logger.debug(f"N = {N} is a perfect power: {base}^{k}")
             return (base, N // base)
 
         # quick small-factor trial division
-        small = self.trial_division(N, limit=1000)
+        small = self._trial_division(N, limit=1000)
         if small:
             return (small, N // small)
 
@@ -51,7 +49,7 @@ class Classical_Shors:
                 return (g, N // g)
 
             # find order r of a mod N (classical brute-force replacement for quantum subroutine)
-            r = self.order_bruteforce(a, N, max_iterations=N)
+            r = self._order_bruteforce(a, N, max_iterations=N)
             if r is None:
                 self.logger.debug(
                     f"Attempt {attempt}: no order found within bound for a={a}"
@@ -85,7 +83,7 @@ class Classical_Shors:
         self.logger.debug("Failed to find factor with given tries")
         return None
 
-    def is_power(self, n: int) -> Optional[Tuple[int, int]]:
+    def _is_power(self, n: int) -> Optional[Tuple[int, int]]:
         """Return (b, k) if n == b**k for k>=2, else None. Quick detection of perfect powers."""
         if n <= 1:
             return None
@@ -97,7 +95,7 @@ class Classical_Shors:
                 return (b, k)
         return None
 
-    def trial_division(self, n: int, limit: int = 1000) -> Optional[int]:
+    def _trial_division(self, n: int, limit: int = 1000) -> Optional[int]:
         """Try small prime factors up to `limit`. Return factor or None."""
         if n % 2 == 0:
             return 2
@@ -109,7 +107,7 @@ class Classical_Shors:
             p += 2
         return None
 
-    def order_bruteforce(
+    def _order_bruteforce(
         self, a: int, N: int, max_iterations: int = 0
     ) -> Optional[int]:
         """

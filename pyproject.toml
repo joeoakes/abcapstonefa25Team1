@@ -18,7 +18,6 @@ python = "^3.13"
 qiskit = "^2.2.1"
 pytest = "^8.4.2"
 qiskit-aer = "^0.17.2"
-qiskit-aer-gpu-cu11 = "^0.17.2"
 
 [tool.poetry.scripts]
 cli = "abcapstonefa25team1.main:init_app('cli')"
