@@ -6,38 +6,19 @@
 # Last Date Changed: 10/23/2025
 # Revision: Setting up CLI structure and added same method
 
+
 import logging
 import argparse
-import sys
-import os
+from abcapstonefa25team1.backend.rsa import RSA_encrypt
+from abcapstonefa25team1.backend.utils.read_write import read_file, write_file
+from abcapstonefa25team1.backend.quantum import classical_shors, quantum_shors
 
 
-# Try package imports first; if running file directly, add project root to sys.path and retry.
-try:
-    from abcapstonefa25team1.backend.utils.read_write import read_file
-    from abcapstonefa25team1.backend.quantum import classical_shors
-except Exception:
-    project_root = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "..")
-    )
-    if project_root not in sys.path:
-        sys.path.insert(0, project_root)
-    from abcapstonefa25team1.backend.utils.read_write import read_file
-    from abcapstonefa25team1.backend.quantum import classical_shors
-
-# Define a simple function with an argument (PLACEHOLDER UNTIL CODE IS READY)
-
-
-# Set up a command-line interface
 def main():
     parser = argparse.ArgumentParser(description="sred a quantum cryptography tool")
-    parser.add_argument("INPUT")
-    parser.add_argument("--output", "-o", required=False)
-    parser.add_argument(
-        "--modulus", "-m", nargs="?", type=int, default=15, const=15, required=False
-    )
-    parser.add_argument("--encrypt", "-e", action="store_true")
-    parser.add_argument("--classical", "-c", action="store_false")
+    sub_parser = parser.add_subparsers(dest="command", required=True)
+
+    # Global debug/verbose
     parser.add_argument(
         "-d",
         "--debug",
@@ -55,41 +36,111 @@ def main():
         dest="loglevel",
         const=logging.INFO,
         default=logging.WARNING,
-    )  # Parse the command-line arguments
+    )
+
+    # Encrypt subcommand
+    encrypt_parser = sub_parser.add_parser("encrypt", help="Encrypt a file")
+    encrypt_parser.add_argument("INPUT", type=str, help="File to encrypt")
+    encrypt_parser.add_argument(
+        "--output", "-o", required=False, type=str, help="Output file name"
+    )
+    encrypt_parser.add_argument(
+        "--keys", "-k", nargs=2, type=int, help="Public key: e n"
+    )
+
+    # Decrypt subcommand
+    decrypt_parser = sub_parser.add_parser("decrypt", help="Decrypt a file")
+    decrypt_parser.add_argument("INPUT", type=str, help="File to decrypt")
+    decrypt_parser.add_argument(
+        "--output", "-o", required=False, type=str, help="Output file name"
+    )
+    decrypt_parser.add_argument(
+        "--classical", "-c", action="store_true", help="Use classical Shor’s algorithm"
+    )
+    decrypt_parser.add_argument(
+        "--exponent", "-e", type=int, required=True, help="Public exponent e"
+    )
+    decrypt_parser.add_argument(
+        "--modulus", "-m", type=int, required=True, help="Public modulus n"
+    )
 
     args = parser.parse_args()
     logger = logging.getLogger("sred_cli")
     logger.setLevel(args.loglevel)
 
-    # create file handler which logs even debug messages
-    fh = logging.FileHandler("cli_output.log")
-    fh.setLevel(args.loglevel)
-
-    # create console handler with a higher log level
     ch = logging.StreamHandler()
     ch.setLevel(args.loglevel)
-
-    # create formatter and add it to the handlers
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    ch.setFormatter(
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     )
-    fh.setFormatter(formatter)
-    ch.setFormatter(formatter)
-
-    # add the handlers to the logger
-    logger.addHandler(fh)
     logger.addHandler(ch)
 
-    fileText = read_file(args.INPUT)
-    logger.info(f"Read File: {fileText}")
+    rsa = RSA_encrypt.RSA()
 
-    shors = classical_shors.Classical_Shors()
+    # Encrypt
+    if args.command == "encrypt":
+        plaintext = read_file(args.INPUT)
+        if plaintext is None:
+            logger.error("Failed to read input file.")
+            return
 
-    if not args.encrypt:
-        p, q = shors.shors_classical(int(args.modulus))
-        logger.info(f"Shor's Algorithm Output: {p} {q}")
-    else:
-        logger.debug("Encryption:")
+        if args.keys:
+            e, n = args.keys
+            logger.info(f"Encrypting using public key (e={e}, n={n})")
+            ciphertext = rsa.encrypt(plaintext, (e, n))
+        else:
+            public_key, private_key, _ = rsa.generate_keys()
+            e, n = public_key
+            logger.info(f"Generated public key: {public_key}")
+            logger.info(f"Generated private key: {private_key}")
+            ciphertext = rsa.encrypt(plaintext, public_key)
+
+        output_file = args.output or "encrypted.txt"
+        write_file(output_file, ciphertext)
+        logger.info(f"Encrypted output saved to '{output_file}'")
+
+    # Decrypt
+    elif args.command == "decrypt":
+        # Read encrypted integers (space-separated)
+        file_text = read_file(args.INPUT)
+        if file_text is None:
+            logger.error("Failed to read input file.")
+            return
+
+        try:
+            encrypted_blocks = [int(x) for x in file_text.split()]
+        except ValueError:
+            logger.error("Ciphertext file must contain space-separated integers.")
+            return
+
+        N = args.modulus
+        e = args.exponent
+
+        # Factor N using chosen Shor’s implementation
+        if args.classical:
+            shors = classical_shors.Classical_Shors()
+            factors = shors.shors_classical(N)
+            if not factors:
+                logger.error("Classical Shor’s failed to factor N.")
+                return
+            p, q = factors
+            logger.info(f"Classical Shor’s found p={p}, q={q}")
+        else:
+            shors = quantum_shors.Quantum_Shors()
+            p, q = shors.shors_quantum(N)
+            logger.info(f"Quantum Shor’s found p={p}, q={q}")
+
+        priv = rsa.derive_private_key_from_factors(p, q, e)
+        if priv is None:
+            logger.error("Failed to derive private key.")
+            return
+
+        d, n = priv[1], priv[0]
+        plaintext = rsa.decrypt(encrypted_blocks, (d, n))
+
+        output_file = args.output or "decrypted.txt"
+        write_file(output_file, plaintext)
+        logger.info(f"Decrypted output saved to '{output_file}'")
 
 
 if __name__ == "__main__":

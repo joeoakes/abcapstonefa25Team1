@@ -1,0 +1,1 @@
+Hello this is an example file to show the encryption and decryption capabilities of sred!
