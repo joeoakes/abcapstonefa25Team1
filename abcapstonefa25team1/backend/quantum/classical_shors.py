@@ -21,6 +21,14 @@ class Classical_Shors:
         Attempt to factor N using the classical analog of Shor's algorithm.
         Tries up to `tries` random choices of a.
         Returns a tuple (p, q) of non-trivial factors if found, otherwise None.
+        
+        Args:
+            N: The integer to be factored (must be greater than 1).
+            tries: Maximum number of random attempts to find factors. Defaults to 10.
+
+        Returns:
+            A tuple containing two non-trivial factors (p, q)
+            of N if successful; otherwise, None.
         """
         if N % 2 == 0:
             return (2, N // 2)
@@ -84,7 +92,15 @@ class Classical_Shors:
         return None
 
     def _is_power(self, n: int) -> Optional[Tuple[int, int]]:
-        """Return (b, k) if n == b**k for k>=2, else None. Quick detection of perfect powers."""
+        """
+        Return (b, k) if n == b**k for k>=2, else None. Quick detection of perfect powers.
+        
+        Args: 
+            N: The integer to check.
+
+        Returns:
+            A tuple (b, k) if n is a perfect power, otherwise None.
+        """
         if n <= 1:
             return None
         max_k = int(math.log2(n)) + 1
@@ -96,7 +112,16 @@ class Classical_Shors:
         return None
 
     def _trial_division(self, n: int, limit: int = 1000) -> Optional[int]:
-        """Try small prime factors up to `limit`. Return factor or None."""
+        """
+        Try small prime factors up to `limit`. Return factor or None.
+        
+        Args: 
+            N: The integer to factor.
+            limit: The upper bound for trial division.
+        Returns:
+            A non-trivial factor of n if found, otherwise None.
+        
+        """
         if n % 2 == 0:
             return 2
         p = 3
@@ -114,6 +139,13 @@ class Classical_Shors:
         Find the multiplicative order r of a modulo N by brute force:
         the smallest r > 0 such that a^r % N == 1.
         Returns r or None if not found within max_iterations.
+
+        Args: 
+            a: The base integer.
+            N: The modulus.
+            max_iterations: Maximum number of iterations to attempt.
+        Returns:
+            The multiplicative order r if found within iteration limit, otherwise None.
         """
         if math.gcd(a, N) != 1:
             return None
