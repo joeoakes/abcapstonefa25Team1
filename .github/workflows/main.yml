@@ -51,5 +51,5 @@ jobs:
 
       - name: Run tests
         run: |
-          poetry run pytest -v --maxfail=1 --disable-warnings --cov=.
+          poetry run pytest -v --maxfail=1 --disable-warnings
 
