@@ -18,6 +18,20 @@ class Quantum_Shors:
     def __init__(self):
         self.logger = logging.getLogger("sred_cli.quantum_shors.Quantum_Shors")
         self.logger.debug("Creating an instance of logger for Shor's Quantum")
+        
+        self.use_gpu = False    # Default to CPU
+
+    def enable_gpu(self, enable: bool = True):
+        """Enable or disable GPU acceleration for AerSimulator.
+        
+        Args:
+            enable: True to enable GPU, False to disable
+        
+        Returns:
+            None
+        """
+        self.use_gpu = enable
+        self.logger.debug(f"GPU acceleration set to {self.use_gpu}")
 
     def shors_quantum(self, N: int, a=None):
         """
@@ -148,7 +162,12 @@ class Quantum_Shors:
         self.logger.debug(f"Circuit depth: {qc.depth()}")
 
         # Simulate the circuit
-        simulator = AerSimulator(method="statevector")
+        if self.use_gpu:
+            simulator = AerSimulator(method="statevector", device="GPU")
+            self.logger.debug("Using GPU-accelerated AerSimulator")
+        else:
+            simulator = AerSimulator(method="statevector")
+            self.logger.debug("Using CPU AerSimulator")
         qc.measure_all()
 
         # Transpile the circuit to decompose into basic gates
