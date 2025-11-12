@@ -8,6 +8,7 @@ import binascii
 import threading
 import io
 import sys
+from typing import Optional, Tuple, Iterable
 
 # Allow running this file directly (without -m)
 repoRoot = Path(__file__).resolve().parents[3]
@@ -19,6 +20,15 @@ from abcapstonefa25team1.backend.rsa.RSA_encrypt import RSA
 from abcapstonefa25team1.backend.utils.read_write import (
     read_file, write_file, write_encrypted_binary, read_encrypted_binary
 )
+
+#Optional: Classical/Quantum Shor’s (safe import; toggle will auto-disable if unavailable)
+try:
+    from abcapstonefa25team1.backend.quantum import classical_shors, quantum_shors
+    _HAS_SHORS = True
+except Exception:
+    classical_shors = quantum_shors = None
+    _HAS_SHORS = False
+
 
 # CamelCase wrappers so all new code stays camelCase
 def readFile(path: str) -> str:
@@ -45,6 +55,23 @@ class App(tk.Tk):
         self.rsa = RSA()
         self.publicKey = None    # (e, n)
         self.privateKey = None   # (d, n)
+
+        # Classical/Quantum state (UI toggle + instances)
+        self.useClassical = tk.BooleanVar(value=True)  # True => Classical, False => Quantum
+        self.classicalShors = None
+        self.quantumShors = None
+        if _HAS_SHORS:
+            try:
+                self.classicalShors = classical_shors.Classical_Shors()
+            except Exception:
+                self.classicalShors = None
+            try:
+                self.quantumShors = quantum_shors.Quantum_Shors()
+            except Exception:
+                self.quantumShors = None
+        else:
+            # If neither module is available, force 'Classical' on (but we won't call it)
+            self.useClassical.set(True)
 
         # Root Grid Configuration
         self.columnconfigure(0, weight=1)
@@ -101,7 +128,7 @@ class App(tk.Tk):
         actions.grid(row=2, column=0, sticky="ew", pady=(12, 0))
         actions.columnconfigure(0, weight=0)
         actions.columnconfigure(1, weight=1)
-        for i in (2, 3, 4, 5):
+        for i in (2, 3, 4, 5, 6, 7):
             actions.columnconfigure(i, weight=0)
 
         ttk.Label(actions, text="File:").grid(row=0, column=0, sticky="w")
@@ -118,9 +145,22 @@ class App(tk.Tk):
         self.decryptBtn = ttk.Button(actions, text="Decrypt", command=self.handleDecrypt)
         self.decryptBtn.grid(row=0, column=5)
 
+        # Classical ↔ Quantum toggle (Checkbutton: checked=Classical, unchecked=Quantum)
+        self.methodToggle = ttk.Checkbutton(
+            actions,
+            text="Classical",                # when checked (True) -> Classical
+            variable=self.useClassical
+        )
+        self.methodToggle.grid(row=0, column=6, padx=(16, 0))
+
         # Status
         self.keyBanner = ttk.Label(actions, text="No keys loaded", foreground="#666")
-        self.keyBanner.grid(row=1, column=0, columnspan=6, sticky="w", pady=(6, 0))
+        self.keyBanner.grid(row=1, column=0, columnspan=7, sticky="w", pady=(6, 0))
+
+        # If Shor's modules missing, dim/disable the toggle
+        if not (self.classicalShors or self.quantumShors):
+            self.methodToggle.state(["disabled"])
+            self.methodToggle.configure(text="Classical (Shor's unavailable)")
 
         # React to path changes (to enable/disable buttons)
         self.filePathVar.trace_add("write", lambda *args: self.updateActionStates())
@@ -153,7 +193,6 @@ class App(tk.Tk):
         return self.inputText.get("1.0", "end-1c")
 
     def onInputModified(self, _event=None):
-        # Reset the modified flag and update button states
         self.inputText.edit_modified(False)
         self.updateActionStates()
 
@@ -165,9 +204,7 @@ class App(tk.Tk):
         text = self.getInputText().strip()
         if not text:
             return False
-        # Remove whitespace for validation
         compact = "".join(text.split())
-        # Base64 should be multiple of 4 chars
         if len(compact) % 4 != 0:
             return False
         try:
@@ -183,15 +220,110 @@ class App(tk.Tk):
         else:
             self.encryptBtn.state(["!disabled"])
 
-        # Decrypt enabled only if:
-        #   - a .enc file is selected, OR
-        #   - Input contains something that looks like base64
+        # Decrypt enabled if .enc selected OR input looks like base64
         if self.isEncSelected() or self.inputLooksLikeBase64():
             self.decryptBtn.state(["!disabled"])
         else:
             self.decryptBtn.state(["disabled"])
 
-    # Actions 
+    # Shor's integration helpers
+    @staticmethod
+    def _egcd(a: int, b: int) -> Tuple[int, int, int]:
+        if a == 0:
+            return (b, 0, 1)
+        g, y, x = App._egcd(b % a, a)
+        return (g, x - (b // a) * y, y)
+
+    @staticmethod
+    def _modInv(a: int, m: int) -> int:
+        g, x, _ = App._egcd(a, m)
+        if g != 1:
+            raise ValueError("modular inverse does not exist")
+        return x % m
+
+    @staticmethod
+    def _normalizeFactors(result) -> Optional[Tuple[int, int]]:
+        """
+        Try to coerce various Shor's returns into a (p, q) pair of ints.
+        Accept tuples/lists/iterables; ignore 1 and n-like values; dedupe.
+        """
+        if result is None:
+            return None
+        if isinstance(result, (int,)):
+            return None
+        if isinstance(result, (tuple, list, set)):
+            flat: Iterable[int] = []
+            flat = [int(x) for x in result if isinstance(x, (int,)) or (isinstance(x, str) and x.isdigit())]
+            flat = [x for x in flat if x > 1]
+            if len(flat) >= 2:
+                return (flat[0], flat[1])
+            return None
+        # Unknown type
+        return None
+
+    def factorN(self, n: int) -> Optional[Tuple[int, int]]:
+        """
+        Use Classical or Quantum Shor's (per toggle) to factor n.
+        Tries a few common method signatures; returns (p, q) or None.
+        """
+        # Prefer classical if checked and available
+        if self.useClassical.get() and self.classicalShors:
+            try:
+                # Common names: shors_classical(n) or run(n)
+                for meth in ("shors_classical", "run", "factor"):
+                    if hasattr(self.classicalShors, meth):
+                        res = getattr(self.classicalShors, meth)(n)
+                        pair = self._normalizeFactors(res)
+                        if pair:
+                            p, q = pair
+                            if p * q == n:
+                                return (p, q)
+            except Exception:
+                pass
+
+        # Otherwise try quantum if available
+        if not self.useClassical.get() and self.quantumShors:
+            try:
+                # Common signatures: run_shors_algorithm(n, a) or run(n)
+                if hasattr(self.quantumShors, "run_shors_algorithm"):
+                    # Use a small co-prime base; fallback to 15 (demo value) if accepted
+                    try:
+                        res = self.quantumShors.run_shors_algorithm(n, 15)
+                    except TypeError:
+                        res = self.quantumShors.run_shors_algorithm(n)
+                else:
+                    # Other method names
+                    for meth in ("run", "factor", "shors_quantum"):
+                        if hasattr(self.quantumShors, meth):
+                            res = getattr(self.quantumShors, meth)(n)
+                            break
+                    else:
+                        res = None
+                pair = self._normalizeFactors(res)
+                if pair:
+                    p, q = pair
+                    if p * q == n:
+                        return (p, q)
+            except Exception:
+                pass
+
+        return None
+
+    def computePrivateKeyFromPublicViaShors(self, publicKey: Tuple[int, int]) -> Optional[Tuple[Tuple[int, int], Tuple[int, int]]]:
+        """
+        Attempt to factor n via Shor's (classical/quantum per toggle),
+        then compute d and return ((d, n), (p, q)).
+        """
+        e, n = publicKey
+        pq = self.factorN(n)
+        if not pq:
+            return None
+        p, q = pq
+        phi = (p - 1) * (q - 1)
+        d = self._modInv(e, phi)
+        return ( (d, n), (p, q) )
+
+    # Actions
     def browseFile(self):
         path = filedialog.askopenfilename(title="Choose a file")
         if not path:
@@ -305,12 +437,44 @@ class App(tk.Tk):
         threading.Thread(target=work, daemon=True).start()
 
     def handleDecrypt(self):
-        if not self.privateKey:
-            messagebox.showwarning("No key", "Generate keys first (or load d,n).")
+        """
+        Decrypt behavior:
+        - If privateKey is available: decrypt immediately (same as before).
+        - If privateKey is missing but publicKey is present:
+            * Try factoring n with Shor's per toggle (Classical/Quantum).
+            * If successful, derive d, update UI, and decrypt.
+            * If unavailable or fails, show a helpful error.
+        """
+        if not (self.privateKey or self.publicKey):
+            messagebox.showwarning("No key", "Generate keys first (or load e,n / d,n).")
             return
 
         def work():
             try:
+                # Ensure privateKey exists (factor n if necessary)
+                if not self.privateKey and self.publicKey:
+                    if not (self.classicalShors or self.quantumShors):
+                        raise RuntimeError(
+                            "Shor's modules are unavailable. Cannot factor n automatically.\n"
+                            "Please generate keys (which includes d) or install the Shor's modules."
+                        )
+
+                    mode = "Classical" if self.useClassical.get() else "Quantum"
+                    self.writeOutput(f"[{mode} Shor's] Attempting to factor n to derive private key...\n")
+                    res = self.computePrivateKeyFromPublicViaShors(self.publicKey)
+                    if not res:
+                        raise RuntimeError(f"{mode} Shor's failed to factor n.")
+                    (d, n), (p, q) = res
+                    self.privateKey = (d, n)
+
+                    # Update banner to reflect derived private key
+                    e, _ = self.publicKey
+                    self.keyBanner.configure(
+                        text=f"Public: e={e}, n={n}  |  Private (derived): d={d}  (p={p}, q={q})"
+                    )
+                    self.writeOutput(f"[{mode} Shor's] Factoring successful.\nDerived d. Proceeding to decrypt...\n")
+
+                # Use privateKey from here on
                 d, n = self.privateKey
                 textArea = self.getInputText().strip()
                 blocks = None
