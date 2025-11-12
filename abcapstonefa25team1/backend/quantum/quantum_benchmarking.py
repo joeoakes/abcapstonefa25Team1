@@ -10,7 +10,6 @@ import sys
 from datetime import datetime
 
 # Add the parent directory to the path to import quantum_shors
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'quantum'))
 from quantum_shors import Quantum_Shors
 
 try:
