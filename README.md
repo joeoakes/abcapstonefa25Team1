@@ -93,3 +93,94 @@ poetry run pytest -v
 ```
 
 ---
+
+
+## CLI Documentation
+
+To view all available commands and options:
+```bash
+poetry run cli --help
+```
+
+Global options:
+```bash
+Short              Long           Description
+-h                 --help       Show help message and exit
+-d                 --debug      Enable detailed debugging logs
+-v                 --verbose    Display verbose runtime messages
+```
+
+
+Encrypt a plaintext file using the RSA public key or generates a new keypair
+```bash
+poetry run cli encrypt INPUT [-o OUTPUT] [-k e n]
+```
+Options
+```bash
+Short       Long          Type       Default           Description
+-o          --output      str        stdout          Output encrypted file
+-k          --keys       int int     [7,143]        Public RSA key pair (e,n)
+```
+
+Example
+```bash
+# Encrypt using default public key
+poetry run cli encrypt <file name> -o <file name>.enc
+
+# Encrypt with custom RSA key
+poetry run cli encrypt <file name> -k 11 221 -o <file name>.enc
+```
+
+
+Decrypts an encrypted file using either classical or quantum Shor’s algorithm to factor the RSA modulus.
+```bash
+poetry run cli decrypt INPUT [-o OUTPUT] [-c] [-e E] [-m N]
+```
+Options
+```bash
+Short        Long           Type            Default           Description
+-o         --output          str            stdout          Output plaintext
+-c         --classical        -              False        Use classical Shor's algorithm
+-e         --exponent        int              7             Public exponent e
+-m         --modules         int             143            Public modulus n
+```
+Examples
+```bash
+# Quantum Shor’s algorithm (default)
+poetry run cli decrypt <file name>.enc -o <file name>.txt
+
+# Classical Shor’s algorithm
+poetry run cli decrypt <file name>.enc -c -m 187 -e 7
+```
+
+Logging
+```bash
+Flag        Level               Description
+-v          INFO          Progress and key generation logs
+-d          DEBUG       Detailed steps and Shor's factoring output
+```
+Example
+```bash
+poetry run cli -d encrypt sample.txt
+# 2025-11-10 20:35:02 - sred_cli - INFO - Encrypting using public key (e=7, n=143)
+```
+
+Exit Codes:
+```bash 
+Code           Meaning
+0              Success
+1              File read/write error
+2              Factoring or key derivation failed
+3              Invalid arguments or missing input
+```
+Example Workflow
+```bash
+# Encrypt a file
+poetry run cli encrypt secret.txt -o secret.enc
+
+# Decrypt using quantum Shor’s algorithm
+poetry run cli decrypt secret.enc -o recovered.txt
+
+# Verify file integrity
+diff secret.txt recovered.txt
+```
