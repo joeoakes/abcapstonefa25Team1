@@ -140,7 +140,7 @@ Options
 ```bash
 Short        Long           Type            Default           Description
 -o         --output          str            stdout          Output plaintext
--c         --classical        -              False        Use classical Shor's algorithm
+-c         --classical        -              False        Use classical Shor algorithm
 -e         --exponent        int              7             Public exponent e
 -m         --modules         int             143            Public modulus n
 ```
@@ -157,7 +157,7 @@ Logging
 ```bash
 Flag        Level               Description
 -v          INFO          Progress and key generation logs
--d          DEBUG       Detailed steps and Shor's factoring output
+-d          DEBUG       Detailed steps and Shor factoring output
 ```
 Example
 ```bash
