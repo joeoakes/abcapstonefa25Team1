@@ -3,7 +3,7 @@
 # Course: CMPSC 488
 # Author: Rob Jajko
 # Date Developed: 10/22/25
-# Last Date Changed: 10/22/25
+# Last Date Changed: 11/11/25
 # Revision: 0.1.0
 from qiskit import QuantumCircuit, QuantumRegister, transpile
 from qiskit_aer import AerSimulator
@@ -18,6 +18,20 @@ class Quantum_Shors:
     def __init__(self):
         self.logger = logging.getLogger("sred_cli.quantum_shors.Quantum_Shors")
         self.logger.debug("Creating an instance of logger for Shor's Quantum")
+        
+        self.use_gpu = False    # Default to CPU
+
+    def enable_gpu(self, enable: bool = True):
+        """Enable or disable GPU acceleration for AerSimulator.
+        
+        Args:
+            enable: True to enable GPU, False to disable
+        
+        Returns:
+            None
+        """
+        self.use_gpu = enable
+        self.logger.debug(f"GPU acceleration set to {self.use_gpu}")
 
     def shors_quantum(self, N: int, a=None):
         """
@@ -148,7 +162,12 @@ class Quantum_Shors:
         self.logger.debug(f"Circuit depth: {qc.depth()}")
 
         # Simulate the circuit
-        simulator = AerSimulator(method="statevector")
+        if self.use_gpu:
+            simulator = AerSimulator(method="statevector", device="GPU")
+            self.logger.debug("Using GPU-accelerated AerSimulator")
+        else:
+            simulator = AerSimulator(method="statevector")
+            self.logger.debug("Using CPU AerSimulator")
         qc.measure_all()
 
         # Transpile the circuit to decompose into basic gates
@@ -426,7 +445,7 @@ class Quantum_Shors:
         """
 
         self.logger.debug("=" * 70)
-        self.logger.debug("Attempting to factor N = {N}")
+        self.logger.debug(f"Attempting to factor N = {N}")
         self.logger.debug("=" * 70)
 
         for attempt in range(max_attempts):
@@ -447,20 +466,20 @@ class Quantum_Shors:
 #     self.logger.debug("Complete Shor's Algorithm Implementation in Qiskit 2.2.1")
 #     self.logger.debug("Full quantum modular arithmetic circuits (CPU only)")
 #     self.logger.debug("=" * 70)
-#
+
 #     # Test with small numbers
 #     test_numbers = [255]
-#
+
 #     for N in test_numbers:
 #         self.logger.debug("\n")
 #         result = run_shors_algorithm(N, max_attempts=15, verbose=True)
-#
+
 #         if result:
 #             p, q = result
 #             self.logger.debug(f"\n✓ VERIFIED: {p} × {q} = {p * q}")
 #             assert p * q == N, "Factor verification failed!"
 #         self.logger.debug("=" * 70)
-#
+
 #     self.logger.debug("\n\nPerformance Notes:")
 #     self.logger.debug("- N ≤ 21: Fast (seconds)")
 #     self.logger.debug("- N ≤ 35: Moderate (10-60 seconds)")
@@ -468,3 +487,33 @@ class Quantum_Shors:
 #     self.logger.debug("- N > 100: Very slow (may require hours or fail due to memory)")
 #     self.logger.debug("\nThis implementation includes full quantum modular arithmetic.")
 #     self.logger.debug("Circuit complexity grows significantly with N.")
+
+# Benchmark and GPU testing
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+
+    shor = Quantum_Shors()   # ✅ Create instance
+
+    shor.logger.debug("Complete Shor's Algorithm Implementation in Qiskit 2.2.1")
+    shor.logger.debug("Full quantum modular arithmetic circuits (CPU only)")
+    shor.logger.debug("=" * 70)
+
+    test_numbers = [255]
+
+    for N in test_numbers:
+        shor.logger.debug("\n")
+        result = shor.run_shors_algorithm(N, max_attempts=15)
+
+        if result:
+            p, q = result
+            shor.logger.debug(f"\n✓ VERIFIED: {p} × {q} = {p * q}")
+            assert p * q == N, "Factor verification failed!"
+        shor.logger.debug("=" * 70)
+
+    shor.logger.debug("\n\nPerformance Notes:")
+    shor.logger.debug("- N ≤ 21: Fast (seconds)")
+    shor.logger.debug("- N ≤ 35: Moderate (10-60 seconds)")
+    shor.logger.debug("- N ≤ 77: Slow (minutes)")
+    shor.logger.debug("- N > 100: Very slow (may require hours or fail due to memory)")
+    shor.logger.debug("\nThis implementation includes full quantum modular arithmetic.")
+    shor.logger.debug("Circuit complexity grows significantly with N.")
