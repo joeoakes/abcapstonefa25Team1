@@ -165,14 +165,6 @@ poetry run cli -d encrypt sample.txt
 # 2025-11-10 20:35:02 - sred_cli - INFO - Encrypting using public key (e=7, n=143)
 ```
 
-Exit Codes:
-```bash 
-Code           Meaning
-0              Success
-1              File read/write error
-2              Factoring or key derivation failed
-3              Invalid arguments or missing input
-```
 Example Workflow
 ```bash
 # Encrypt a file
