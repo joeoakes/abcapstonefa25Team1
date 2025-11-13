@@ -21,6 +21,10 @@ qiskit-aer = "^0.17.2"
 pandas = "^2.3.3"
 matplotlib = "^3.10.7"
 gputil = "^1.4.0"
+qiskit-aer-gpu-cu11 = { version = "^0.17.2", optional = true }
+
+[tool.poetry.extras]
+gpu = ['qiskit-aer-gpu-cu11']
 
 [tool.poetry.scripts]
 cli = "abcapstonefa25team1.main:init_app('cli')"
