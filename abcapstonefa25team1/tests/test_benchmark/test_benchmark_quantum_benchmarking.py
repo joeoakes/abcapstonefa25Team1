@@ -12,7 +12,7 @@ from datetime import datetime
 import pandas as pd
 
 # Add the parent directory to the path to import quantum_shors
-from quantum_shors import Quantum_Shors
+from abcapstonefa25team1.backend.quantum.quantum_shors import Quantum_Shors
 
 try:
     import platform
