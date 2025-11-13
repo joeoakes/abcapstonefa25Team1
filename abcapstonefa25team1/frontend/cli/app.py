@@ -50,7 +50,12 @@ def main():
         "--output", "-o", required=False, type=str, help="Output file name"
     )
     encrypt_parser.add_argument(
-        "--keys", "-k", nargs=2, type=int, default=[7, 143], help="Public key: e n"
+        "--keys",
+        "-k",
+        nargs=2,
+        type=int,
+        default=[7, 123],
+        help="Public key: e n (must be greater than 122)",
     )
 
     # Decrypt subcommand
@@ -73,8 +78,8 @@ def main():
         "--modulus",
         "-m",
         type=int,
-        default=143,
-        help="Public modulus n",
+        default=123,
+        help="Public modulus n, must be greater than 122",
     )
 
     args = parser.parse_args()
@@ -94,6 +99,9 @@ def main():
     if args.command == "encrypt":
         if args.keys:
             e, n = args.keys
+            if n < 123:
+                print("Error: Modulus must be greater than 122")
+                return
             logger.info(f"Encrypting using public key (e={e}, n={n})")
         else:
             public_key, private_key, _ = rsa.generate_keys()
@@ -103,7 +111,7 @@ def main():
 
         plaintext = read_file(args.INPUT)
         if plaintext is None:
-            print("Failed to read input file.")
+            print("Error: Failed to read input file.")
             return
 
         ciphertext = rsa.encrypt(plaintext, (e, n))
@@ -116,6 +124,10 @@ def main():
     # ---- Decrypt ----
     elif args.command == "decrypt":
         N = args.modulus
+        if N < 123:
+            print("Error: Modulus must be greater than 122")
+            return
+
         e = args.exponent
 
         # Factor N using chosen Shor’s implementation
@@ -139,13 +151,13 @@ def main():
         # Derive private key from Shor's factors
         priv = rsa.derive_private_key_from_factors(p, q, e)
         if priv is None:
-            logger.error("Failed to derive private key.")
+            logger.error("Error: Failed to derive private key.")
             return
         d, n = priv[1], priv[0]
 
         encrypted_blocks = read_encrypted_binary(args.INPUT, n)
         if encrypted_blocks is None:
-            print("Failed to read input file.")
+            print("Error: Failed to read input file.")
             return
 
         plaintext = rsa.decrypt(encrypted_blocks, (d, n))
