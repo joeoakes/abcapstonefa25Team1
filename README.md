@@ -20,6 +20,8 @@
 - Python 3
 - Poetry
 - Qiskit
+- Pytest
+- Tkinter
 
 ## Project Overview
 We aim to develop a CLI and GUI application that allows users to encrypt files using the RSA cryptosystem and decrypt them using a qiskit implementation of Shor's algorithm.
@@ -41,10 +43,13 @@ abcapstonefa25team1/
 │   │   └── gui/
 │   │       └── app.py            # GUI entry
 │   └── backend/
-│       ├── rsa/
-│       │   └── __init__.py
-│       └── quantum/
-│           └── __init__.py
+│   │   ├── rsa/
+│   │   │   └── __init__.py
+│   │   └── quantum/
+│   │       └── __init__.py
+│   └── tests/
+│       ├── test_regression/ 
+│       └── test_unit/
 ├── pyproject.toml
 ├── poetry.lock
 └── README.md
@@ -70,6 +75,10 @@ NOTE: **Make sure Poetry is installed**
 2. **Install dependencies**
    ```bash
    poetry install
+   ```
+**Optional: Install extra dependencies to better utilize GPU**
+   ```bash
+   poetry install --extras=gpu
    ```
 
 ---
