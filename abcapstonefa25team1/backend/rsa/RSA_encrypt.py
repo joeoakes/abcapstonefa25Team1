@@ -7,7 +7,7 @@
 # Revision: Some revisions needed to be done. Using the code that was givven to us in class to help with understanding of RSA.
 
 import random  # for generating random primes and keys
-import math    # for gcd calculation
+import math  # for gcd calculation
 import logging  # for logging debug information
 from typing import Tuple, Optional  # type hints for clarity
 
@@ -63,24 +63,47 @@ class RSA:
             message += chr(m_int)  # convert integer back to character
         return message
 
-    def generate_keys(self, primes_range=(3, 50)) -> tuple:
+    def generate_keys(self, primes_range=(12, 100), n_range=(123, 255)) -> tuple:
         """
-        Generates RSA keys:
-            - Public key (e, n)
-            - Private key (d, n)
-            - Prime factors (p, q)
-        Primes are selected randomly within primes_range.
+        Generates RSA keys ensuring modulus n is within a valid byte-sized range.
+
+        Returns:
+            (public_key, private_key, (p, q))
+
+        Constraints:
+            n = p * q such that n_range[0] <= n <= n_range[1]
+            e coprime with φ(n)
         """
-        # List all prime numbers in the given range
         primes = [p for p in range(*primes_range) if self._is_prime(p)]
-        p = random.choice(primes)  # pick first prime
-        q = random.choice([x for x in primes if x != p])  # pick second prime, not equal to p
-        n = p * q
-        phi = (p - 1) * (q - 1)
-        # Pick public exponent e coprime to phi
-        e = random.choice([x for x in range(3, phi, 2) if math.gcd(x, phi) == 1])
-        d = self._modinv(e, phi)  # compute private exponent
-        return ((e, n), (d, n), (p, q))  # return public key, private key, primes
+        if len(primes) < 2:
+            raise ValueError(f"Not enough primes found in range {primes_range}")
+
+        # Keep trying random pairs until valid n is found
+        for _ in range(1000):  # hard safety limit
+            p = random.choice(primes)
+            q = random.choice([x for x in primes if x != p])
+            n = p * q
+
+            # Enforce modulus constraints
+            if not (n_range[0] <= n <= n_range[1]):
+                continue
+
+            phi = (p - 1) * (q - 1)
+            e_candidates = [x for x in range(3, phi, 2) if math.gcd(x, phi) == 1]
+            if not e_candidates:
+                continue
+
+            e = random.choice(e_candidates)
+            d = self._modinv(e, phi)
+            if d is None:
+                continue
+
+            return ((e, n), (d, n), (p, q))  # success
+
+        # If we exhausted attempts
+        raise RuntimeError(
+            f"Failed to generate valid RSA key within {n_range} after multiple attempts"
+        )
 
     def _modinv(self, a, m):
         """

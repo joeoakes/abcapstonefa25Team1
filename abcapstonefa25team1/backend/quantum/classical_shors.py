@@ -21,7 +21,7 @@ class Classical_Shors:
         Attempt to factor N using the classical analog of Shor's algorithm.
         Tries up to `tries` random choices of a.
         Returns a tuple (p, q) of non-trivial factors if found, otherwise None.
-        
+
         Args:
             N: The integer to be factored (must be greater than 1).
             tries: Maximum number of random attempts to find factors. Defaults to 10.
@@ -40,6 +40,8 @@ class Classical_Shors:
             base, k = pp
             self.logger.debug(f"N = {N} is a perfect power: {base}^{k}")
             return (base, N // base)
+        if self._is_prime(N):
+            return None
 
         # quick small-factor trial division
         small = self._trial_division(N, limit=1000)
@@ -94,8 +96,8 @@ class Classical_Shors:
     def _is_power(self, n: int) -> Optional[Tuple[int, int]]:
         """
         Return (b, k) if n == b**k for k>=2, else None. Quick detection of perfect powers.
-        
-        Args: 
+
+        Args:
             N: The integer to check.
 
         Returns:
@@ -114,13 +116,13 @@ class Classical_Shors:
     def _trial_division(self, n: int, limit: int = 1000) -> Optional[int]:
         """
         Try small prime factors up to `limit`. Return factor or None.
-        
-        Args: 
+
+        Args:
             N: The integer to factor.
             limit: The upper bound for trial division.
         Returns:
             A non-trivial factor of n if found, otherwise None.
-        
+
         """
         if n % 2 == 0:
             return 2
@@ -132,6 +134,19 @@ class Classical_Shors:
             p += 2
         return None
 
+    def _is_prime(self, n: int):
+        """
+        Checks if a number n is prime.
+        Returns True if n is prime, False otherwise.
+        """
+        if n <= 1:
+            return False
+        # Check divisibility up to sqrt(n)
+        for i in range(2, int(n**0.5) + 1):
+            if n % i == 0:
+                return False
+        return True
+
     def _order_bruteforce(
         self, a: int, N: int, max_iterations: int = 0
     ) -> Optional[int]:
@@ -140,7 +155,7 @@ class Classical_Shors:
         the smallest r > 0 such that a^r % N == 1.
         Returns r or None if not found within max_iterations.
 
-        Args: 
+        Args:
             a: The base integer.
             N: The modulus.
             max_iterations: Maximum number of iterations to attempt.
