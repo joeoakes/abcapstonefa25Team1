@@ -1,5 +1,6 @@
 # ABCapstoneFA25Team1
 
+![Build Status](https://img.shields.io/badge/Code%20Coverage-68%25-yellow?style=flat)
 ---
 
 ## Course Information
