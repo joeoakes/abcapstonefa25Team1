@@ -1,7 +1,10 @@
-"""
-Shor's Algorithm Performance Benchmark Suite
-Compares CPU vs GPU performance with detailed metrics - Console output + CSV output
-"""
+# Project: PSU Abington Fall 2025 Capstone
+# Purpose Details: Shor's Algorithm Performance Benchmark Suite + CPU vs GPU Comparison
+# Course: CMPSC 488
+# Author: Avik Bhuiyan
+# Date Developed: 11/05/25
+# Last Date Changed: 11/13/25
+# Revision: 0.1.0
 
 import time
 import logging
