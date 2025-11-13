@@ -24,6 +24,7 @@ gputil = "^1.4.0"
 qiskit-aer-gpu-cu11 = { version = "^0.17.2", optional = true }
 colorama = "^0.4.6"
 pylatexenc = "^2.10"
+pytest-cov = "^7.0.0"
 
 [tool.poetry.extras]
 gpu = ['qiskit-aer-gpu-cu11']
@@ -32,9 +33,6 @@ colorama = ['colorama']
 [tool.poetry.scripts]
 cli = "abcapstonefa25team1.main:init_app('cli')"
 gui = "abcapstonefa25team1.main:init_app('gui')"
-
-[tool.poetry.group.dev.dependencies]
-pytest-cov = "^7.0.0"
 
 [build-system]
 requires = ["poetry-core"]

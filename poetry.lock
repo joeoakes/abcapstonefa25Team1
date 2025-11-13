@@ -1352,4 +1352,4 @@ gpu = ["qiskit-aer-gpu-cu11"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.13"
-content-hash = "fc1025dc0349c393b5ae0f963cccd05d12c07772ef0a7f5176c0e75ef0939a19"
+content-hash = "5e1c21ccfb8a194d9679c6cc8dd62838654bf54020ac106a0aa63ab691c5c9a1"
