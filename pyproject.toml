@@ -33,6 +33,9 @@ colorama = ['colorama']
 cli = "abcapstonefa25team1.main:init_app('cli')"
 gui = "abcapstonefa25team1.main:init_app('gui')"
 
+[tool.poetry.group.dev.dependencies]
+pytest-cov = "^7.0.0"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

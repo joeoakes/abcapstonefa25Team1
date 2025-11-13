@@ -51,5 +51,18 @@ jobs:
 
       - name: Run tests
         run: |
-          poetry run pytest -v --maxfail=1 --disable-warnings
+          poetry run pytest -v --maxfail=1 --disable-warnings --cov \ --cov-report=xml:coverage.xml \ --cov-report=term-missing
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+      - name: Publish coverage report to GitHub
+        uses: 5monkeys/cobertura-action@v13
+        with:
+          path: coverage.xml
+          show_class_names: true
+          show_missing: true
 
