@@ -23,6 +23,7 @@ matplotlib = "^3.10.7"
 gputil = "^1.4.0"
 qiskit-aer-gpu-cu11 = { version = "^0.17.2", optional = true }
 colorama = "^0.4.6"
+pylatexenc = "^2.10"
 
 [tool.poetry.extras]
 gpu = ['qiskit-aer-gpu-cu11']

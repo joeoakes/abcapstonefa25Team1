@@ -920,6 +920,17 @@ files = [
 windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
+name = "pylatexenc"
+version = "2.10"
+description = "Simple LaTeX parser providing latex-to-unicode and unicode-to-latex conversion"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "pylatexenc-2.10.tar.gz", hash = "sha256:3dd8fd84eb46dc30bee1e23eaab8d8fb5a7f507347b23e5f38ad9675c84f40d3"},
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.2.5"
 description = "pyparsing - Classes and methods to define and execute parsing grammars"
@@ -1266,4 +1277,4 @@ gpu = ["qiskit-aer-gpu-cu11"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.13"
-content-hash = "77da6449f5ac3b19267f0f98981b3aa9793f3bcb48f964129c730d6f1af962ec"
+content-hash = "ab3fc3b205ffabc1f50d25dc14c39a4779963b957fe7298c6ec4cb8f67e0eb05"
