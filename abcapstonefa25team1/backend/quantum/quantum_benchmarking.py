@@ -5,7 +5,6 @@
 # Date Developed: 11/05/25
 # Last Date Changed: 11/13/25
 # Revision: 0.1.0
-
 import time
 import logging
 import os
@@ -15,8 +14,7 @@ from datetime import datetime
 import pandas as pd
 
 # Add the parent directory to the path to import quantum_shors
-from quantum_shors import Quantum_Shors
-
+from abcapstonefa25team1.backend.quantum.quantum_shors import Quantum_Shors
 try:
     import platform
     import psutil
@@ -199,7 +197,49 @@ def main():
 
     benchmark = ShorsBenchmark()
     benchmark.run_comparison_benchmark(test_numbers=[15, 21, 35], runs_per_test=2, max_attempts=3)
+    return benchmark
 
+import matplotlib.pyplot as plt
+import os
 
+def show_slideshow(recent_files=None):
+    """Display saved Shor's algorithm charts with Matplotlib navigation arrows.
+    If recent_files is provided, display only those files.
+    Otherwise, show all PNGs in the shor_plots directory."""
+    plots_dir = "shor_plots"
+    if recent_files is None:
+        if not os.path.exists(plots_dir):
+            print("No charts found to display.")
+            return
+
+        files = [os.path.join(plots_dir, f) for f in os.listdir(plots_dir) if f.endswith(".png")]
+        files.sort()
+    else:
+        files = recent_files
+
+    if not files:
+        print("No chart images found.")
+        return
+
+    for file in files:
+        # Skip empty or corrupted files
+        if not os.path.exists(file) or os.path.getsize(file) < 1024:  # <1KB = bad save
+            print(f"⚠️ Skipping corrupt or empty image: {os.path.basename(file)}")
+            continue
+
+        try:
+            img = plt.imread(file)
+            plt.figure(figsize=(10, 6))
+            plt.imshow(img)
+            plt.axis("off")
+            plt.title(os.path.basename(file), fontsize=12)
+            plt.tight_layout()
+            plt.close()  # ✅ prevent too many open figures
+        except Exception as e:
+            print(f"⚠️ Skipping {file}: {e}")
+
+    plt.show()
+    
 if __name__ == "__main__":
-    main()
+    shor = main()
+    show_slideshow(recent_files=shor.saved_charts if hasattr(shor, "saved_charts") else None)
