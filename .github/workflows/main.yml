@@ -51,7 +51,8 @@ jobs:
 
       - name: Run tests
         run: |
-          poetry run pytest -v --maxfail=1 --disable-warnings --cov=abcapstonefa25team1 --cov-report=xml:coverage.xml --cov-report=term-missing
+          pwd
+          poetry run pytest -v --maxfail=1 --disable-warnings --cov --cov-report=xml:coverage.xml --cov-report=term-missing
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
