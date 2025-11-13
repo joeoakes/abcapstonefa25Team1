@@ -65,4 +65,5 @@ jobs:
           path: coverage.xml
           show_class_names: true
           show_missing: true
+          minimum_coverage: 50
 
