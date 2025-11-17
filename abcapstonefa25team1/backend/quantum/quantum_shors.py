@@ -153,8 +153,30 @@ class Quantum_Shors:
         self.logger.debug(f"Using {n_count} counting qubits")
         self.logger.debug("Building quantum circuit...")
 
+        # Prepare directory for plots
+        import os
+        plots_dir = "shor_plots"
+        os.makedirs(plots_dir, exist_ok=True)
+        # Initialize saved charts list if not already present
+        if not hasattr(self, "saved_charts"):
+            self.saved_charts = []
+
         # Create the quantum circuit
         qc = self.create_shor_circuit(N, a, n_count)
+
+        # --- Circuit visualization (saved instead of shown) ---
+        try:
+            from qiskit.visualization import circuit_drawer
+            import matplotlib.pyplot as plt
+
+            fig = circuit_drawer(qc, output='mpl', scale=0.7)
+            circuit_path = os.path.join(plots_dir, f"shor_circuit_N{N}_a{a}.png")
+            fig.savefig(circuit_path, dpi=300, bbox_inches='tight')
+            plt.close(fig)
+            self.saved_charts.append(circuit_path)
+            self.logger.debug(f"Circuit visualization saved: {circuit_path}")
+        except Exception as e:
+            self.logger.debug(f"Circuit visualization skipped: {e}")
 
         self.logger.debug(
             f"Circuit created with {qc.num_qubits} qubits and {qc.size()} gates"
@@ -180,6 +202,41 @@ class Quantum_Shors:
 
         result = simulator.run(transpiled_qc, shots=2048).result()
         counts = result.get_counts()
+
+        import matplotlib.pyplot as plt
+
+        # --- Classical Periodic Function Visualization ---
+        try:
+            x_vals = list(range(0, 4 * N))  # Plot a few periods
+            y_vals = [pow(a, x, N) for x in x_vals]
+
+            # Calculate the classical period r (order of a modulo N)
+            r_classical = None
+            for i in range(1, N+1):
+                if pow(a, i, N) == 1:
+                    r_classical = i
+                    break
+
+            plt.figure(figsize=(10, 4))
+            plt.plot(x_vals, y_vals, marker='o', linestyle='-', color='royalblue')
+            if r_classical:
+                plt.title(f"Periodic Behavior of f(x) = {a}^x mod {N} (order r = {r_classical})")
+            else:
+                plt.title(f"Periodic Behavior of f(x) = {a}^x mod {N} (order r unknown)")
+            plt.xlabel("x")
+            plt.ylabel(f"f(x) = {a}^x mod {N}")
+            plt.grid(True, alpha=0.4)
+            plt.tight_layout()
+
+            periodic_path = os.path.join(plots_dir, f"shor_periodic_N{N}_a{a}.png")
+            plt.savefig(periodic_path, dpi=300, bbox_inches='tight')
+            plt.close()
+            self.saved_charts.append(periodic_path)
+            self.logger.debug(f"Periodic behavior plot saved: {periodic_path}")
+        except Exception as e:
+            self.logger.debug(f"Classical visualization skipped: {e}")
+
+       
 
         # Show top 10 measurements
         sorted_counts = sorted(counts.items(), key=lambda x: x[1], reverse=True)
