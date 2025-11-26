@@ -2,12 +2,14 @@
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+from tkinter import font as tkfont
 from pathlib import Path
 import base64
 import binascii
 import threading
 import io
 import sys
+from typing import Optional, Tuple, Iterable
 
 # Allow running this file directly (without -m)
 repoRoot = Path(__file__).resolve().parents[3]
@@ -19,6 +21,14 @@ from abcapstonefa25team1.backend.rsa.RSA_encrypt import RSA
 from abcapstonefa25team1.backend.utils.read_write import (
     read_file, write_file, write_encrypted_binary, read_encrypted_binary
 )
+
+# --- Optional: Classical/Quantum Shor’s (safe import; toggle auto-disables if unavailable)
+try:
+    from abcapstonefa25team1.backend.quantum import classical_shors, quantum_shors
+    _HAS_SHORS = True
+except Exception:
+    classical_shors = quantum_shors = None
+    _HAS_SHORS = False
 
 # CamelCase wrappers so all new code stays camelCase
 def readFile(path: str) -> str:
@@ -38,13 +48,46 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("File Encoder/Decoder — Prototype")
-        self.geometry("980x600")
-        self.minsize(860, 520)
+        self.geometry("980x620")
+        self.minsize(880, 540)
+
+        # === Accessibility: font scaling state (with hard bounds) ===
+        self.MIN_FONT_SIZE = 9
+        self.MAX_FONT_SIZE = 22
+        self.fontSizeVar = tk.IntVar(value=11)
+
+        # Named fonts so ttk + Text widgets scale together
+        self.uiFont     = tkfont.nametofont("TkDefaultFont")
+        self.textFont   = tkfont.nametofont("TkTextFont")
+        self.fixedFont  = tkfont.nametofont("TkFixedFont")
+        for f in (self.uiFont, self.textFont, self.fixedFont):
+            f.configure(size=self.fontSizeVar.get())
+
+        # React to size changes
+        self.fontSizeVar.trace_add("write", lambda *_: self.applyFontScale())
+        # Keyboard shortcuts for scaling (no buttons)
+        self.bindAllShortcuts()
 
         # Runtime crypto state
         self.rsa = RSA()
         self.publicKey = None    # (e, n)
         self.privateKey = None   # (d, n)
+
+        # Classical/Quantum state (UI toggle + instances)
+        self.useClassical = tk.BooleanVar(value=True)  # True => Classical, False => Quantum
+        self.classicalShors = None
+        self.quantumShors = None
+        if _HAS_SHORS:
+            try:
+                self.classicalShors = classical_shors.Classical_Shors()
+            except Exception:
+                self.classicalShors = None
+            try:
+                self.quantumShors = quantum_shors.Quantum_Shors()
+            except Exception:
+                self.quantumShors = None
+        else:
+            self.useClassical.set(True)
 
         # Root Grid Configuration
         self.columnconfigure(0, weight=1)
@@ -96,12 +139,12 @@ class App(tk.Tk):
         self.outputText.grid(row=1, column=0, sticky="nsew")
         self.addScrollbar(self.outputText, rightPane, row=1)
 
-        # Action Row
+        # Action Row (no A-/A+ buttons)
         actions = ttk.Frame(container)
         actions.grid(row=2, column=0, sticky="ew", pady=(12, 0))
         actions.columnconfigure(0, weight=0)
         actions.columnconfigure(1, weight=1)
-        for i in (2, 3, 4, 5):
+        for i in (2, 3, 4, 5, 6):
             actions.columnconfigure(i, weight=0)
 
         ttk.Label(actions, text="File:").grid(row=0, column=0, sticky="w")
@@ -118,14 +161,92 @@ class App(tk.Tk):
         self.decryptBtn = ttk.Button(actions, text="Decrypt", command=self.handleDecrypt)
         self.decryptBtn.grid(row=0, column=5)
 
+        # Classical ↔ Quantum toggle (Checkbutton: checked=Classical, unchecked=Quantum)
+        self.methodToggle = ttk.Checkbutton(
+            actions,
+            text="Classical",
+            variable=self.useClassical,
+            command=self.onMethodToggled
+        )
+        self.methodToggle.grid(row=0, column=6, padx=(16, 0))
+
         # Status
         self.keyBanner = ttk.Label(actions, text="No keys loaded", foreground="#666")
-        self.keyBanner.grid(row=1, column=0, columnspan=6, sticky="w", pady=(6, 0))
+        self.keyBanner.grid(row=1, column=0, columnspan=7, sticky="w", pady=(6, 0))
+
+        # If Shor's modules missing, dim/disable the toggle
+        if not (self.classicalShors or self.quantumShors):
+            self.methodToggle.state(["disabled"])
+            self.methodToggle.configure(text="Classical (Shor's unavailable)")
 
         # React to path changes (to enable/disable buttons)
         self.filePathVar.trace_add("write", lambda *args: self.updateActionStates())
         self.applyStyle()
         self.updateActionStates()
+        self.onMethodToggled()
+
+    # ===== Accessibility: font scaling (with bounds + reliable key handling) =====
+    def setFontSize(self, newSize: int):
+        """Clamp to [MIN_FONT_SIZE, MAX_FONT_SIZE] and apply if changed."""
+        clamped = max(self.MIN_FONT_SIZE, min(self.MAX_FONT_SIZE, int(newSize)))
+        if clamped != self.fontSizeVar.get():
+            self.fontSizeVar.set(clamped)  # triggers applyFontScale via trace
+        else:
+            # Hit a bound; give quick user feedback
+            bound = "min" if newSize < self.fontSizeVar.get() else "max"
+            self.showTempStatus(f"Font size {bound} reached ({clamped})")
+
+    def applyFontScale(self):
+        """Apply current font size to default Tk/ttk and text fonts."""
+        size = int(self.fontSizeVar.get())
+        for f in (self.uiFont, self.textFont, self.fixedFont):
+            try:
+                f.configure(size=size)
+            except tk.TclError:
+                pass
+        # Render immediately so one keypress always shows a change
+        self.update_idletasks()
+
+    def increaseFont(self):
+        self.setFontSize(self.fontSizeVar.get() + 1)
+
+    def decreaseFont(self):
+        self.setFontSize(self.fontSizeVar.get() - 1)
+
+    def onIncreaseFont(self, event=None):
+        self.increaseFont()
+        return "break"  # prevent focused widgets from swallowing the event
+
+    def onDecreaseFont(self, event=None):
+        self.decreaseFont()
+        return "break"
+
+    def bindAllShortcuts(self):
+        """Bind multiple sequences so Ctrl/⌘ + +/- works across layouts."""
+        # Increase
+        for seq in ("<Control-equal>", "<Control-plus>", "<Control-Shift-equal>", "<Control-Shift-plus>", "<Control-KP_Add>"):
+            self.bind_all(seq, self.onIncreaseFont, add="+")
+        # Decrease
+        for seq in ("<Control-minus>", "<Control-KP_Subtract>"):
+            self.bind_all(seq, self.onDecreaseFont, add="+")
+        # macOS Command variants
+        if sys.platform == "darwin":
+            for seq in ("<Command-equal>", "<Command-plus>", "<Command-Shift-equal>"):
+                self.bind_all(seq, self.onIncreaseFont, add="+")
+            self.bind_all("<Command-minus>", self.onDecreaseFont, add="+")
+
+    def showTempStatus(self, msg: str, ms: int = 900):
+        """Flash a short status message (used for min/max reached)."""
+        if not hasattr(self, "_statusRestore"):
+            self._statusRestore = None
+        # Save current text and set new
+        current = self.keyBanner.cget("text")
+        self.keyBanner.configure(text=msg)
+        # Restore after delay
+        if self._statusRestore:
+            self.after_cancel(self._statusRestore)
+        self._statusRestore = self.after(ms, lambda: self.keyBanner.configure(text=current))
+    # ===== End Accessibility =====
 
     # UI helpers
     def addScrollbar(self, textWidget: tk.Text, parent: ttk.Frame, row: int):
@@ -153,7 +274,6 @@ class App(tk.Tk):
         return self.inputText.get("1.0", "end-1c")
 
     def onInputModified(self, _event=None):
-        # Reset the modified flag and update button states
         self.inputText.edit_modified(False)
         self.updateActionStates()
 
@@ -165,9 +285,7 @@ class App(tk.Tk):
         text = self.getInputText().strip()
         if not text:
             return False
-        # Remove whitespace for validation
         compact = "".join(text.split())
-        # Base64 should be multiple of 4 chars
         if len(compact) % 4 != 0:
             return False
         try:
@@ -182,23 +300,114 @@ class App(tk.Tk):
             self.encryptBtn.state(["disabled"])
         else:
             self.encryptBtn.state(["!disabled"])
-
-        # Decrypt enabled only if:
-        #   - a .enc file is selected, OR
-        #   - Input contains something that looks like base64
+        # Decrypt enabled if .enc selected OR input looks like base64
         if self.isEncSelected() or self.inputLooksLikeBase64():
             self.decryptBtn.state(["!disabled"])
         else:
             self.decryptBtn.state(["disabled"])
 
-    # Actions 
+    # Shor's UI
+    def onMethodToggled(self):
+        if self.useClassical.get():
+            if self.classicalShors is None:
+                if self.quantumShors:
+                    self.useClassical.set(False)
+                    self.methodToggle.configure(text="Quantum")
+                else:
+                    self.methodToggle.state(["disabled"])
+                    self.methodToggle.configure(text="Classical (Shor's unavailable)")
+            else:
+                self.methodToggle.configure(text="Classical")
+        else:
+            if self.quantumShors is None:
+                if self.classicalShors:
+                    self.useClassical.set(True)
+                    self.methodToggle.configure(text="Classical")
+                else:
+                    self.methodToggle.state(["disabled"])
+                    self.methodToggle.configure(text="Classical (Shor's unavailable)")
+            else:
+                self.methodToggle.configure(text="Quantum")
+
+    # Shor's integration helpers
+    @staticmethod
+    def _egcd(a: int, b: int) -> Tuple[int, int, int]:
+        if a == 0:
+            return (b, 0, 1)
+        g, y, x = App._egcd(b % a, a)
+        return (g, x - (b // a) * y, y)
+
+    @staticmethod
+    def _modInv(a: int, m: int) -> int:
+        g, x, _ = App._egcd(a, m)
+        if g != 1:
+            raise ValueError("modular inverse does not exist")
+        return x % m
+
+    @staticmethod
+    def _normalizeFactors(result) -> Optional[Tuple[int, int]]:
+        if result is None:
+            return None
+        if isinstance(result, (int,)):
+            return None
+        if isinstance(result, (tuple, list, set)):
+            flat: Iterable[int] = []
+            flat = [int(x) for x in result if isinstance(x, (int,)) or (isinstance(x, str) and x.isdigit())]
+            flat = [x for x in flat if x > 1]
+            if len(flat) >= 2:
+                return (flat[0], flat[1])
+            return None
+        return None
+
+    def factorN(self, n: int) -> Optional[Tuple[int, int]]:
+        if self.useClassical.get() and self.classicalShors:
+            try:
+                for meth in ("shors_classical", "run", "factor"):
+                    if hasattr(self.classicalShors, meth):
+                        res = getattr(self.classicalShors, meth)(n)
+                        pair = self._normalizeFactors(res)
+                        if pair and pair[0] * pair[1] == n:
+                            return pair
+            except Exception:
+                pass
+
+        if not self.useClassical.get() and self.quantumShors:
+            try:
+                if hasattr(self.quantumShors, "run_shors_algorithm"):
+                    try:
+                        res = self.quantumShors.run_shors_algorithm(n, 15)
+                    except TypeError:
+                        res = self.quantumShors.run_shors_algorithm(n)
+                else:
+                    res = None
+                    for meth in ("run", "factor", "shors_quantum"):
+                        if hasattr(self.quantumShors, meth):
+                            res = getattr(self.quantumShors, meth)(n)
+                            break
+                pair = self._normalizeFactors(res)
+                if pair and pair[0] * pair[1] == n:
+                    return pair
+            except Exception:
+                pass
+        return None
+
+    def computePrivateKeyFromPublicViaShors(self, publicKey: Tuple[int, int]) -> Optional[Tuple[Tuple[int, int], Tuple[int, int]]]:
+        e, n = publicKey
+        pq = self.factorN(n)
+        if not pq:
+            return None
+        p, q = pq
+        phi = (p - 1) * (q - 1)
+        d = self._modInv(e, phi)
+        return ( (d, n), (p, q) )
+
+    # Actions
     def browseFile(self):
         path = filedialog.askopenfilename(title="Choose a file")
         if not path:
             return
         self.filePathVar.set(path)
         try:
-            # .enc files are binary ciphertext; don't read as text
             if path.lower().endswith(".enc"):
                 key = self.privateKey or self.publicKey
                 if not key:
@@ -212,8 +421,6 @@ class App(tk.Tk):
 
                 _, n = key
                 blocks = readEncryptedBinary(path, n)
-
-                # Base64 preview of raw cipher bytes → show in Input
                 blockSize = (n.bit_length() + 7) // 8
                 buf = io.BytesIO()
                 for c in blocks:
@@ -230,7 +437,6 @@ class App(tk.Tk):
                 self.updateActionStates()
                 return
 
-            # Otherwise treat it as a normal text file
             text = readFile(path)
             if text is None:
                 raise IOError("Read returned None")
@@ -264,7 +470,6 @@ class App(tk.Tk):
             self.updateActionStates()
 
     def handleEncrypt(self):
-        # Guard: never encrypt a .enc file
         if self.isEncSelected():
             messagebox.showinfo(
                 "Already Encrypted",
@@ -279,23 +484,19 @@ class App(tk.Tk):
         def work():
             try:
                 src = self.getInputText()
-                blocks = self.rsa.encrypt(src, self.publicKey)  # list[int]
-
-                # Save to .enc next to selected file (if any)
+                blocks = self.rsa.encrypt(src, self.publicKey)
                 selected = self.filePathVar.get()
                 if selected:
                     outFile = Path(selected).with_suffix(".enc")
                     _, n = self.publicKey
                     writeEncryptedBinary(outFile, blocks, n)
 
-                # Base64 preview for Output
                 e, n = self.publicKey
                 blockSize = (n.bit_length() + 7) // 8
                 buf = io.BytesIO()
                 for c in blocks:
                     buf.write(int(c).to_bytes(blockSize, "big"))
                 b64 = base64.b64encode(buf.getvalue()).decode("ascii")
-
                 self.writeOutput("[Encrypted base64 preview]\n\n" + b64)
             except Exception as e:
                 self.writeOutput(f"[Encrypt error]\n{e}")
@@ -305,12 +506,31 @@ class App(tk.Tk):
         threading.Thread(target=work, daemon=True).start()
 
     def handleDecrypt(self):
-        if not self.privateKey:
-            messagebox.showwarning("No key", "Generate keys first (or load d,n).")
+        if not (self.privateKey or self.publicKey):
+            messagebox.showwarning("No key", "Generate keys first (or load e,n / d,n).")
             return
 
         def work():
             try:
+                if not self.privateKey and self.publicKey:
+                    if not (self.classicalShors or self.quantumShors):
+                        raise RuntimeError(
+                            "Shor's modules are unavailable. Cannot factor n automatically.\n"
+                            "Please generate keys (which includes d) or install the Shor's modules."
+                        )
+                    mode = "Classical" if self.useClassical.get() else "Quantum"
+                    self.writeOutput(f"[{mode} Shor's] Attempting to factor n to derive private key...\n")
+                    res = self.computePrivateKeyFromPublicViaShors(self.publicKey)
+                    if not res:
+                        raise RuntimeError(f"{mode} Shor's failed to factor n.")
+                    (d, n), (p, q) = res
+                    self.privateKey = (d, n)
+                    e, _ = self.publicKey
+                    self.keyBanner.configure(
+                        text=f"Public: e={e}, n={n}  |  Private (derived): d={d}  (p={p}, q={q})"
+                    )
+                    self.writeOutput(f"[{mode} Shor's] Factoring successful.\nDerived d. Proceeding to decrypt...\n")
+
                 d, n = self.privateKey
                 textArea = self.getInputText().strip()
                 blocks = None
@@ -330,7 +550,7 @@ class App(tk.Tk):
                         for i in range(0, len(raw), blockSize)
                     ]
 
-                pt = self.rsa.decrypt(blocks, self.privateKey)  # str
+                pt = self.rsa.decrypt(blocks, self.privateKey)
                 self.writeOutput(pt)
             except Exception as e:
                 self.writeOutput(f"[Decrypt error]\n{e}")
