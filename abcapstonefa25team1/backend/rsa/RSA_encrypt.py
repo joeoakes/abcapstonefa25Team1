@@ -128,3 +128,24 @@ class RSA:
             if n % i == 0:
                 return False
         return True
+
+
+if __name__ == "__main__":
+    rsa = RSA()
+    # generate keys and print them
+    public_key, private_key, (p, q) = rsa.generate_keys()
+    print("Generated keys:")
+    print("  Public  (e, n):", public_key)
+    print("  Private (d, n):", private_key)
+    print("  Primes (p, q):", (p, q))
+    
+    # example encrypt/decrypt and print outputs
+    message = "HELLO"
+    ciphertext = rsa.encrypt(message, public_key)
+    print("Plaintext:", message)
+    print("Ciphertext blocks:", ciphertext)
+    decrypted = rsa.decrypt(ciphertext, private_key)
+    print("Decrypted:", decrypted)
+    # derive private key from factors and print
+    derived = rsa.derive_private_key_from_factors(p, q, public_key[0])
+    print("Derived private (N,d):", derived)
