@@ -30,7 +30,6 @@ except Exception:
     classical_shors = quantum_shors = None
     _HAS_SHORS = False
 
-# CamelCase wrappers so all new code stays camelCase
 def readFile(path: str) -> str:
     return read_file(path)
 
@@ -51,7 +50,7 @@ class App(tk.Tk):
         self.geometry("980x620")
         self.minsize(880, 540)
 
-        # === Accessibility: font scaling state (with hard bounds) ===
+        # === Accessibility: font scaling state ===
         self.MIN_FONT_SIZE = 9
         self.MAX_FONT_SIZE = 22
         self.fontSizeVar = tk.IntVar(value=11)
@@ -139,7 +138,7 @@ class App(tk.Tk):
         self.outputText.grid(row=1, column=0, sticky="nsew")
         self.addScrollbar(self.outputText, rightPane, row=1)
 
-        # Action Row (no A-/A+ buttons)
+        # Action Row
         actions = ttk.Frame(container)
         actions.grid(row=2, column=0, sticky="ew", pady=(12, 0))
         actions.columnconfigure(0, weight=0)
@@ -185,7 +184,7 @@ class App(tk.Tk):
         self.updateActionStates()
         self.onMethodToggled()
 
-    # ===== Accessibility: font scaling (with bounds + reliable key handling) =====
+    # ===== Accessibility: Font Scaling =====
     def setFontSize(self, newSize: int):
         """Clamp to [MIN_FONT_SIZE, MAX_FONT_SIZE] and apply if changed."""
         clamped = max(self.MIN_FONT_SIZE, min(self.MAX_FONT_SIZE, int(newSize)))
