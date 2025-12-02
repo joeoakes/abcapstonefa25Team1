@@ -4,8 +4,6 @@
 # Author: VALERIE MALICKA
 # Date Developed: 10/18/2025
 # Last Date Changed: 10/21/2025
-# Revision: Some revisions needed to be done. Using the code that was givven to us in class to help with understanding of RSA.
-
 
 import random  # for generating random primes and keys
 import math  # for gcd calculation
