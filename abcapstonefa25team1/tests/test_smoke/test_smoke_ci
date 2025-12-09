@@ -1,0 +1,9 @@
+from abcapstonefa25team1.backend.rsa.RSA_encrypt import RSA
+
+def test_ci_demo_rsa_roundtrip():
+    rsa = RSA()
+    public_key, private_key, _ = rsa.generate_keys((11, 30))
+    msg = "CI"
+    cipher = rsa.encrypt(msg, public_key)
+    plain = rsa.decrypt(cipher, private_key)
+    assert plain == msg
