@@ -37,20 +37,23 @@ abcapstonefa25team1/
 ├── abcapstonefa25team1/
 │   ├── __init__.py
 │   ├── main.py                   # Unified initialization logic
-    ├── utils/
 │   ├── frontend/
 │   │   ├── cli/
 │   │   │   └── app.py            # CLI entry
 │   │   └── gui/
 │   │       └── app.py            # GUI entry
-│   └── backend/
+│   ├── backend/
 │   │   ├── rsa/
 │   │   │   └── __init__.py
 │   │   └── quantum/
-│   │       └── __init__.py
-│   └── tests/
-│       ├── test_regression/ 
-│       └── test_unit/
+│   │   │   └── __init__.py
+│   │   └── utils/
+│   ├── tests/
+│   │   ├── test_regression/ 
+│   │   ├── test_unit/
+│   │   ├── test_integration/
+│   │   ├── test_smoke/
+│   └── └── test_load/
 ├── pyproject.toml
 ├── poetry.lock
 └── README.md
