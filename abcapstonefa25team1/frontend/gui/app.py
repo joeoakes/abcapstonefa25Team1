@@ -11,12 +11,19 @@ import io
 import sys
 from typing import Optional, Tuple, Iterable
 
-# Allow running this file directly (without -m)
+# Optional TTS for status announcements (screen-reader-like feedback)
+try:
+    import pyttsx3  # pip install pyttsx3 (optional)
+    _HAS_TTS = True
+except Exception:
+    pyttsx3 = None
+    _HAS_TTS = False
+
 repoRoot = Path(__file__).resolve().parents[3]
 if str(repoRoot) not in sys.path:
     sys.path.insert(0, str(repoRoot))
 
-# Backend imports (backend uses snake_case)
+
 from abcapstonefa25team1.backend.rsa.RSA_encrypt import RSA
 from abcapstonefa25team1.backend.utils.read_write import (
     read_file, write_file, write_encrypted_binary, read_encrypted_binary
@@ -47,25 +54,32 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("File Encoder/Decoder — Prototype")
-        self.geometry("980x620")
-        self.minsize(880, 540)
+        self.geometry("980x640")
+        self.minsize(880, 560)
 
-        # === Accessibility: font scaling state ===
+        # === Accessibility: font scaling (bounded), named fonts, shortcuts ===
         self.MIN_FONT_SIZE = 9
         self.MAX_FONT_SIZE = 22
         self.fontSizeVar = tk.IntVar(value=11)
 
-        # Named fonts so ttk + Text widgets scale together
         self.uiFont     = tkfont.nametofont("TkDefaultFont")
         self.textFont   = tkfont.nametofont("TkTextFont")
         self.fixedFont  = tkfont.nametofont("TkFixedFont")
         for f in (self.uiFont, self.textFont, self.fixedFont):
             f.configure(size=self.fontSizeVar.get())
 
-        # React to size changes
         self.fontSizeVar.trace_add("write", lambda *_: self.applyFontScale())
-        # Keyboard shortcuts for scaling (no buttons)
+        # Keyboard shortcuts (font + primary actions)
         self.bindAllShortcuts()
+
+        # Optional speech engine for status announcements
+        self.tts = pyttsx3.init() if _HAS_TTS else None
+        if self.tts:
+            try:
+                self.tts.setProperty("rate", min(200, int(self.tts.getProperty("rate"))))
+                self.tts.setProperty("volume", 1.0)
+            except Exception:
+                pass
 
         # Runtime crypto state
         self.rsa = RSA()
@@ -97,7 +111,7 @@ class App(tk.Tk):
         container.columnconfigure(0, weight=1)
         container.rowconfigure(1, weight=1)
 
-        # Main two-column area
+        # Main area
         main = ttk.Frame(container)
         main.grid(row=1, column=0, sticky="nsew")
         for i in (0, 2):
@@ -115,8 +129,8 @@ class App(tk.Tk):
         self.inputText = tk.Text(leftPane, wrap="word", undo=True)
         self.inputText.grid(row=4, column=0, sticky="nsew")
         self.addScrollbar(self.inputText, leftPane, row=4)
-
-        # Watch input changes to update button states
+        # Make Text focus visually obvious
+        self.inputText.configure(highlightthickness=2, highlightcolor="#0B5FFF", highlightbackground="#C8D8FF")
         self.inputText.bind("<<Modified>>", self.onInputModified)
 
         # Middle Arrow
@@ -137,7 +151,9 @@ class App(tk.Tk):
         self.outputText = tk.Text(rightPane, wrap="word", state="normal")
         self.outputText.grid(row=1, column=0, sticky="nsew")
         self.addScrollbar(self.outputText, rightPane, row=1)
+        self.outputText.configure(highlightthickness=2, highlightcolor="#0B5FFF", highlightbackground="#C8D8FF")
 
+        # Action Row
         # Action Row
         actions = ttk.Frame(container)
         actions.grid(row=2, column=0, sticky="ew", pady=(12, 0))
@@ -152,58 +168,59 @@ class App(tk.Tk):
         self.filePathEntry = ttk.Entry(actions, textvariable=self.filePathVar, state="readonly")
         self.filePathEntry.grid(row=0, column=1, sticky="ew")
 
-        ttk.Button(actions, text="Browse…", command=self.browseFile).grid(row=0, column=2, padx=(8, 0))
-        self.generateKeysBtn = ttk.Button(actions, text="Generate Keys", command=self.handleGenerateKeys)
+        self.browseBtn = ttk.Button(actions, text="Browse… (Ctrl+O)", command=self.browseFile)
+        self.browseBtn.grid(row=0, column=2, padx=(8, 0))
+
+        self.generateKeysBtn = ttk.Button(actions, text="Generate Keys (Ctrl+G)", command=self.handleGenerateKeys)
         self.generateKeysBtn.grid(row=0, column=3, padx=(16, 0))
-        self.encryptBtn = ttk.Button(actions, text="Encrypt", command=self.handleEncrypt)
+
+        self.encryptBtn = ttk.Button(actions, text="Encrypt (Ctrl+E)", command=self.handleEncrypt)
         self.encryptBtn.grid(row=0, column=4, padx=(16, 8))
-        self.decryptBtn = ttk.Button(actions, text="Decrypt", command=self.handleDecrypt)
+
+        self.decryptBtn = ttk.Button(actions, text="Decrypt (Ctrl+D)", command=self.handleDecrypt)
         self.decryptBtn.grid(row=0, column=5)
 
-        # Classical ↔ Quantum toggle (Checkbutton: checked=Classical, unchecked=Quantum)
+        # Factoring method toggle with clearer label
         self.methodToggle = ttk.Checkbutton(
             actions,
-            text="Classical",
+            text="Factoring method: Classical",
             variable=self.useClassical,
             command=self.onMethodToggled
         )
         self.methodToggle.grid(row=0, column=6, padx=(16, 0))
 
-        # Status
-        self.keyBanner = ttk.Label(actions, text="No keys loaded", foreground="#666")
+        # Status line (used for announcements; also shown in TTS if available)
+        self.keyBanner = ttk.Label(actions, text="No keys loaded", foreground="#222")
         self.keyBanner.grid(row=1, column=0, columnspan=7, sticky="w", pady=(6, 0))
 
         # If Shor's modules missing, dim/disable the toggle
         if not (self.classicalShors or self.quantumShors):
             self.methodToggle.state(["disabled"])
-            self.methodToggle.configure(text="Classical (Shor's unavailable)")
+            self.methodToggle.configure(text="Factoring method: Classical (Shor's unavailable)")
 
-        # React to path changes (to enable/disable buttons)
+        self.applyStyle()       # includes high-contrast focus ring for ttk widgets
         self.filePathVar.trace_add("write", lambda *args: self.updateActionStates())
-        self.applyStyle()
         self.updateActionStates()
         self.onMethodToggled()
+        self.announceStatus("Ready. Press Ctrl+O to choose a file.")
 
-    # ===== Accessibility: Font Scaling =====
+    # ===== Accessibility: font scaling, action shortcuts, visible focus =====
     def setFontSize(self, newSize: int):
-        """Clamp to [MIN_FONT_SIZE, MAX_FONT_SIZE] and apply if changed."""
         clamped = max(self.MIN_FONT_SIZE, min(self.MAX_FONT_SIZE, int(newSize)))
         if clamped != self.fontSizeVar.get():
             self.fontSizeVar.set(clamped)  # triggers applyFontScale via trace
         else:
-            # Hit a bound; give quick user feedback
-            bound = "min" if newSize < self.fontSizeVar.get() else "max"
+            bound = "minimum" if newSize < self.fontSizeVar.get() else "maximum"
             self.showTempStatus(f"Font size {bound} reached ({clamped})")
+            self.announceStatus(f"Font size {bound} reached")
 
     def applyFontScale(self):
-        """Apply current font size to default Tk/ttk and text fonts."""
         size = int(self.fontSizeVar.get())
         for f in (self.uiFont, self.textFont, self.fixedFont):
             try:
                 f.configure(size=size)
             except tk.TclError:
                 pass
-        # Render immediately so one keypress always shows a change
         self.update_idletasks()
 
     def increaseFont(self):
@@ -214,37 +231,56 @@ class App(tk.Tk):
 
     def onIncreaseFont(self, event=None):
         self.increaseFont()
-        return "break"  # prevent focused widgets from swallowing the event
+        return "break"
 
     def onDecreaseFont(self, event=None):
         self.decreaseFont()
         return "break"
 
     def bindAllShortcuts(self):
-        """Bind multiple sequences so Ctrl/⌘ + +/- works across layouts."""
-        # Increase
+        # Font scale: multiple sequences for reliability; return "break" to avoid Text eating it
         for seq in ("<Control-equal>", "<Control-plus>", "<Control-Shift-equal>", "<Control-Shift-plus>", "<Control-KP_Add>"):
             self.bind_all(seq, self.onIncreaseFont, add="+")
-        # Decrease
         for seq in ("<Control-minus>", "<Control-KP_Subtract>"):
             self.bind_all(seq, self.onDecreaseFont, add="+")
-        # macOS Command variants
         if sys.platform == "darwin":
             for seq in ("<Command-equal>", "<Command-plus>", "<Command-Shift-equal>"):
                 self.bind_all(seq, self.onIncreaseFont, add="+")
             self.bind_all("<Command-minus>", self.onDecreaseFont, add="+")
 
+        # Primary actions: Ctrl+O, Ctrl+G, Ctrl+E, Ctrl+D (+ Command on macOS)
+        self.bind_all("<Control-o>", lambda e: (self.browseFile(), "break"), add="+")
+        self.bind_all("<Control-g>", lambda e: (self.handleGenerateKeys(), "break"), add="+")
+        self.bind_all("<Control-e>", lambda e: (self.handleEncrypt(), "break"), add="+")
+        self.bind_all("<Control-d>", lambda e: (self.handleDecrypt(), "break"), add="+")
+        if sys.platform == "darwin":
+            self.bind_all("<Command-o>", lambda e: (self.browseFile(), "break"), add="+")
+            self.bind_all("<Command-g>", lambda e: (self.handleGenerateKeys(), "break"), add="+")
+            self.bind_all("<Command-e>", lambda e: (self.handleEncrypt(), "break"), add="+")
+            self.bind_all("<Command-d>", lambda e: (self.handleDecrypt(), "break"), add="+")
+
     def showTempStatus(self, msg: str, ms: int = 900):
-        """Flash a short status message (used for min/max reached)."""
         if not hasattr(self, "_statusRestore"):
             self._statusRestore = None
-        # Save current text and set new
         current = self.keyBanner.cget("text")
         self.keyBanner.configure(text=msg)
-        # Restore after delay
         if self._statusRestore:
             self.after_cancel(self._statusRestore)
         self._statusRestore = self.after(ms, lambda: self.keyBanner.configure(text=current))
+
+    def announceStatus(self, msg: str):
+        """Visual + optional speech announcement."""
+        try:
+            self.keyBanner.configure(text=msg)
+        except Exception:
+            pass
+        if self.tts:
+            try:
+                self.tts.stop()
+                self.tts.say(msg)
+                self.tts.runAndWait()
+            except Exception:
+                pass
     # ===== End Accessibility =====
 
     # UI helpers
@@ -254,6 +290,7 @@ class App(tk.Tk):
         scroll.grid(row=row, column=1, sticky="ns")
 
     def applyStyle(self):
+        # Theme + padding
         style = ttk.Style()
         try:
             style.theme_use("clam")
@@ -262,6 +299,33 @@ class App(tk.Tk):
         style.configure("TButton", padding=(10, 6))
         style.configure("TFrame", background="#f7f7fb")
         style.configure("TLabel", background="#f7f7fb")
+        style.configure("TCheckbutton", background="#f7f7fb")
+
+        # High-contrast focus ring for interactive controls
+        focusBorder = "#0B5FFF"  
+        focusBg     = "#E6F0FF"   
+        # Buttons
+        style.map("TButton",
+            highlightcolor=[("focus", focusBorder)],
+            bordercolor=[("focus", focusBorder)],
+            background=[("focus", focusBg)]
+        )
+        # Entry
+        style.map("TEntry",
+            fieldbackground=[("focus", "#FFFFFF"), ("!focus", "#FFFFFF")],
+            bordercolor=[("focus", focusBorder)]
+        )
+        # Checkbutton
+        style.map("TCheckbutton",
+            foreground=[("focus", "#000")],
+            background=[("focus", focusBg)]
+        )
+
+        # Give the read-only path entry a visible border on focus
+        try:
+            self.filePathEntry.configure(takefocus=True)
+        except Exception:
+            pass
 
     def writeOutput(self, text: str):
         self.outputText.configure(state="normal")
@@ -299,6 +363,7 @@ class App(tk.Tk):
             self.encryptBtn.state(["disabled"])
         else:
             self.encryptBtn.state(["!disabled"])
+
         # Decrypt enabled if .enc selected OR input looks like base64
         if self.isEncSelected() or self.inputLooksLikeBase64():
             self.decryptBtn.state(["!disabled"])
@@ -307,26 +372,26 @@ class App(tk.Tk):
 
     # Shor's UI
     def onMethodToggled(self):
+        # Update label text for clarity
         if self.useClassical.get():
+            label = "Factoring method: Classical"
             if self.classicalShors is None:
                 if self.quantumShors:
                     self.useClassical.set(False)
-                    self.methodToggle.configure(text="Quantum")
+                    label = "Factoring method: Quantum"
                 else:
                     self.methodToggle.state(["disabled"])
-                    self.methodToggle.configure(text="Classical (Shor's unavailable)")
-            else:
-                self.methodToggle.configure(text="Classical")
+                    label = "Factoring method: Classical (Shor's unavailable)"
         else:
+            label = "Factoring method: Quantum"
             if self.quantumShors is None:
                 if self.classicalShors:
                     self.useClassical.set(True)
-                    self.methodToggle.configure(text="Classical")
+                    label = "Factoring method: Classical"
                 else:
                     self.methodToggle.state(["disabled"])
-                    self.methodToggle.configure(text="Classical (Shor's unavailable)")
-            else:
-                self.methodToggle.configure(text="Quantum")
+                    label = "Factoring method: Classical (Shor's unavailable)"
+        self.methodToggle.configure(text=label)
 
     # Shor's integration helpers
     @staticmethod
@@ -410,6 +475,7 @@ class App(tk.Tk):
             if path.lower().endswith(".enc"):
                 key = self.privateKey or self.publicKey
                 if not key:
+                    self.announceStatus("Encrypted file selected. Generate or load keys, then press Decrypt.")
                     messagebox.showinfo(
                         "Encrypted file selected",
                         "This is an encrypted (.enc) file.\n"
@@ -431,8 +497,9 @@ class App(tk.Tk):
                 self.writeOutput(
                     "Selected encrypted file (.enc).\n"
                     "A base64 preview of the raw cipher bytes is shown in Input.\n"
-                    "Click Decrypt to recover plaintext."
+                    "Press Decrypt to recover plaintext."
                 )
+                self.announceStatus("Encrypted file loaded. Ready to decrypt.")
                 self.updateActionStates()
                 return
 
@@ -441,6 +508,7 @@ class App(tk.Tk):
                 raise IOError("Read returned None")
             self.inputText.delete("1.0", "end")
             self.inputText.insert("1.0", text)
+            self.announceStatus("Plaintext file loaded.")
 
         except UnicodeDecodeError:
             messagebox.showerror(
@@ -448,8 +516,10 @@ class App(tk.Tk):
                 "This file is not UTF-8 text. If it's an encrypted file, "
                 "please select the .enc and click Decrypt."
             )
+            self.announceStatus("Read error.")
         except Exception as e:
             messagebox.showerror("Read error", f"Couldn't read the file:\n{e}")
+            self.announceStatus("Read error.")
         finally:
             self.updateActionStates()
 
@@ -463,8 +533,10 @@ class App(tk.Tk):
                 text=f"Public: e={e}, n={n}  |  Private: d={d}  (p={p}, q={q})"
             )
             self.writeOutput("Keys generated.\nYou can now Encrypt/Decrypt.")
+            self.announceStatus("Keys generated.")
         except Exception as e:
             messagebox.showerror("Key generation error", str(e))
+            self.announceStatus("Key generation failed.")
         finally:
             self.updateActionStates()
 
@@ -475,9 +547,11 @@ class App(tk.Tk):
                 "The selected file has a .enc extension and appears to be encrypted.\n"
                 "Please choose a plaintext file to encrypt."
             )
+            self.announceStatus("Encrypt blocked. File already encrypted.")
             return
         if not self.publicKey:
             messagebox.showwarning("No key", "Generate keys first.")
+            self.announceStatus("No keys. Generate keys first.")
             return
 
         def work():
@@ -497,8 +571,10 @@ class App(tk.Tk):
                     buf.write(int(c).to_bytes(blockSize, "big"))
                 b64 = base64.b64encode(buf.getvalue()).decode("ascii")
                 self.writeOutput("[Encrypted base64 preview]\n\n" + b64)
+                self.announceStatus("Encryption complete.")
             except Exception as e:
                 self.writeOutput(f"[Encrypt error]\n{e}")
+                self.announceStatus("Encryption failed.")
             finally:
                 self.updateActionStates()
 
@@ -507,6 +583,7 @@ class App(tk.Tk):
     def handleDecrypt(self):
         if not (self.privateKey or self.publicKey):
             messagebox.showwarning("No key", "Generate keys first (or load e,n / d,n).")
+            self.announceStatus("No keys. Generate keys first.")
             return
 
         def work():
@@ -519,6 +596,7 @@ class App(tk.Tk):
                         )
                     mode = "Classical" if self.useClassical.get() else "Quantum"
                     self.writeOutput(f"[{mode} Shor's] Attempting to factor n to derive private key...\n")
+                    self.announceStatus(f"{mode} factoring started.")
                     res = self.computePrivateKeyFromPublicViaShors(self.publicKey)
                     if not res:
                         raise RuntimeError(f"{mode} Shor's failed to factor n.")
@@ -529,6 +607,7 @@ class App(tk.Tk):
                         text=f"Public: e={e}, n={n}  |  Private (derived): d={d}  (p={p}, q={q})"
                     )
                     self.writeOutput(f"[{mode} Shor's] Factoring successful.\nDerived d. Proceeding to decrypt...\n")
+                    self.announceStatus("Private key derived. Decrypting.")
 
                 d, n = self.privateKey
                 textArea = self.getInputText().strip()
@@ -551,8 +630,10 @@ class App(tk.Tk):
 
                 pt = self.rsa.decrypt(blocks, self.privateKey)
                 self.writeOutput(pt)
+                self.announceStatus("Decryption complete.")
             except Exception as e:
                 self.writeOutput(f"[Decrypt error]\n{e}")
+                self.announceStatus("Decryption failed.")
             finally:
                 self.updateActionStates()
 
