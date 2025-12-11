@@ -36,7 +36,8 @@ gui = "abcapstonefa25team1.main:init_app('gui')"
 
 [tool.coverage.run]
 omit = [
-    "abcapstonefa25team1/tests/*"
+    "abcapstonefa25team1/tests/*",
+    "abcapstonefa25team1/backend/quantum/quantum_benchmarking.py,
 ]
 
 [build-system]
