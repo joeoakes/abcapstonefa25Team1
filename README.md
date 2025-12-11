@@ -1,6 +1,6 @@
 # ABCapstoneFA25Team1
 
-![Build Status](https://img.shields.io/badge/Code%20Coverage-68%25-yellow?style=flat)
+![Build Status](https://img.shields.io/badge/Code%20Coverage-86%25-green?style=flat)
 ---
 
 ## Course Information
@@ -15,7 +15,6 @@
 - Valerie Malicka
 - Huy Nguyen
 - Kamilla Anarkulova
-- Shakhzoda Ziyadullaeva
 
 ## Technologies Used
 - Python 3
