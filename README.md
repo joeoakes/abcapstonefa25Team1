@@ -1,6 +1,6 @@
 # ABCapstoneFA25Team1
 
-![Build Status](https://img.shields.io/badge/Code%20Coverage-86%25-green?style=flat)
+![Build Status](https://img.shields.io/badge/Code%20Coverage-71%25-green?style=flat)
 ---
 
 ## Course Information
