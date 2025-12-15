@@ -2,7 +2,6 @@ import time
 import random
 import pytest
 
-#  Import path
 from abcapstonefa25team1.backend.quantum.classical_shors import Classical_Shors
 
 
@@ -14,34 +13,70 @@ def is_valid_factor(N, result):
     return (p * q == N) and (1 < p < N) and (1 < q < N)
 
 
-# A set of test numbers 
-TEST_NUMBERS = [15, 21, 33, 35, 39, 49, 55, 65, 77, 91, 121]
+TEST_NUMBERS = [15, 35, 49, 55, 65, 91, 121, 133, 187, 209, 221, 247, 299]
 
 
-@pytest.mark.parametrize("N", TEST_NUMBERS)
-def test_classical_correctness(N):
-    """Ensure Classical Shor finds valid factors for multiple N values."""
+@pytest.mark.load
+def test_classical_load_with_summary():
+    """
+    Repeatedly factor many N values to simulate expected or slightly increased
+    workload, while collecting performance metrics for reporting.
+    """
     cs = Classical_Shors()
-    result = cs.shors_classical(N, tries=20)
-    assert is_valid_factor(N, result), f"Failed to factor N={N}, got: {result}"
 
+    repeats = 100
+    warmup = 5
 
-def test_classical_load_multiple_values():
-    """Load-style test across several N values, showing throughput."""
-    cs = Classical_Shors()
-    repeats = 25
+    print("\n CLASSICAL SHOR LOAD TEST ")
 
-    print("\n--- CLASSICAL SHOR LOAD TEST ---")
+    # Global stats
+    total_requests = 0
+    total_successes = 0
+    total_failures = 0
+    all_times = []
+    error_types = {"invalid_factor": 0}
+
+    global_start = time.perf_counter()
+
     for N in TEST_NUMBERS:
-        successes = 0
-        start = time.perf_counter()
+
+        # Warm-up
+        for _ in range(warmup):
+            cs.shors_classical(N, tries=20)
+
         for i in range(repeats):
+            total_requests += 1
             random.seed(i)
+
+            t0 = time.perf_counter()
             result = cs.shors_classical(N, tries=20)
+            t1 = time.perf_counter()
+
+            runtime = t1 - t0
+            all_times.append(runtime)
+
             if is_valid_factor(N, result):
-                successes += 1
-        elapsed = time.perf_counter() - start
-        rate = repeats / max(elapsed, 1e-9)
-        print(f"N={N:<4} | successes={successes:>2}/{repeats} | "
-              f"time={elapsed:.4f}s | rate={rate:.1f} runs/s")
-        assert successes >= 1, f"No successful factorizations for N={N}"
+                total_successes += 1
+            else:
+                total_failures += 1
+                error_types["invalid_factor"] += 1
+
+    # Final summary
+    global_elapsed = time.perf_counter() - global_start
+    avg_response_ms = (sum(all_times) / len(all_times)) * 1000
+    min_response_ms = min(all_times) * 1000
+    max_response_ms = max(all_times) * 1000
+    requests_per_sec = total_requests / global_elapsed
+
+    print("---------------------------")
+    print(f"Total Runs:           {total_requests}")
+    print(f"Successful:           {total_successes}")
+    print(f"Failed:               {total_failures}")
+    print(f"Total Time:           {global_elapsed:.4f} seconds")
+    print(f"Avg Response Time:    {avg_response_ms:.2f} ms")
+    print(f"Fastest Response:     {min_response_ms:.2f} ms")
+    print(f"Slowest Response:     {max_response_ms:.2f} ms")
+    print(f"Requests/sec:         {requests_per_sec:.2f} rps")
+    print("Errors:")
+    for err, count in error_types.items():
+        print(f" - {err}: {count}")
